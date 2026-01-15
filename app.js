@@ -2,7 +2,7 @@
   // Paste either:
   // "https://your-app.onrender.com"
   // OR "https://your-app.onrender.com/api/chat"
-  const RENDER_API_URL = "PASTE_YOUR_RENDER_LINK_HERE";
+  const RENDER_API_URL = "https://ma-insult.onrender.com/";
 
   const phoneEl = document.getElementById("phone");
   const logEl = document.getElementById("log");
