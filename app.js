@@ -1,143 +1,44 @@
 (() => {
-  // Paste either:
-  // "https://your-app.onrender.com"
-  // OR "https://your-app.onrender.com/api/chat"
   const RENDER_API_URL = "https://ma-insult.onrender.com/";
 
-  const phoneEl = document.getElementById("phone");
   const logEl = document.getElementById("log");
   const form = document.getElementById("form");
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("send");
   const statusEl = document.getElementById("status");
-  const roastEl = document.getElementById("roast");
-  const roastLabel = document.getElementById("roastLabel");
-  const modeEl = document.getElementById("mode"); // chat / diagnostic / script
+  const toneEl = document.getElementById("tone");
 
-  if (!phoneEl || !logEl || !form || !input || !sendBtn || !statusEl || !roastEl || !roastLabel || !modeEl) {
-    console.error("Missing DOM nodes. Check IDs in index.html.");
-    return;
-  }
-
-  // Proof JS is running
   statusEl.textContent = "JS loaded ✅";
 
+  const messages = [];
   const safe = (s) => String(s ?? "");
 
-  // ===== Viewport stability (kills iOS address bar jumps) =====
-  function setAppHeight() {
-    const h = window.innerHeight;
-    document.documentElement.style.setProperty("--app-height", `${h}px`);
-  }
-  setAppHeight();
-  window.addEventListener("resize", setAppHeight);
-  window.addEventListener("orientationchange", () => setTimeout(setAppHeight, 50));
-
-  // Prevent page-level bounce/overscroll (allow scroll only inside log)
-  document.addEventListener(
-    "touchmove",
-    (e) => {
-      const inThread = e.target && e.target.closest && e.target.closest("#log");
-      if (!inThread) e.preventDefault();
-    },
-    { passive: false }
-  );
-
-  // ===== Inject Tone selector into topbar if missing =====
-  // Expected HTML:
-  // <select id="tone"><option value="casual">Casual (fun)</option> ...</select>
-  function ensureToneSelector() {
-    let toneEl = document.getElementById("tone");
-    if (toneEl) return toneEl;
-
-    const topbar = document.querySelector(".topbar .controls");
-    if (!topbar) {
-      console.warn("No .topbar .controls found; tone selector not injected.");
-      return null;
-    }
-
-    const pill = document.createElement("div");
-    pill.className = "pill";
-    pill.style.gap = "6px";
-    pill.innerHTML = `
-      Tone
-      <select id="tone" aria-label="Tone mode">
-        <option value="casual">Casual (fun)</option>
-        <option value="concise">Concise</option>
-        <option value="insulting">Insulting</option>
-      </select>
-    `;
-
-    topbar.appendChild(pill);
-    toneEl = pill.querySelector("#tone");
-    return toneEl;
-  }
-
-  const toneEl = ensureToneSelector();
-
-  // ===== State =====
-  const messages = [];
-
   function normalizeEndpoint(raw) {
-    let url = safe(raw).trim();
-    if (!url) return "";
-    url = url.replace(/\/+$/, "");
+    let url = safe(raw).replace(/\/+$/, "");
     if (!/\/api\/chat$/i.test(url)) url += "/api/chat";
     return url;
   }
   const ENDPOINT = normalizeEndpoint(RENDER_API_URL);
 
-  function normalizeTags(tags) {
-    if (!Array.isArray(tags)) return [];
-    return tags.slice(0, 5).map((t) => ({
-      label: safe(t?.label).slice(0, 40),
-      color: t?.color === "green" || t?.color === "blue" ? t.color : "",
-    }));
-  }
-
-  function setBusy(b) {
-    sendBtn.disabled = b;
-    input.disabled = b;
-    roastEl.disabled = b;
-    modeEl.disabled = b;
-    if (toneEl) toneEl.disabled = b;
-  }
-
-  function setStatus(s) {
-    statusEl.textContent = s;
-  }
-
-  function scrollToBottom() {
-    requestAnimationFrame(() => {
-      logEl.scrollTop = logEl.scrollHeight;
-    });
-  }
-
-  function pushMessage(role, content) {
-    messages.push({ role, content: safe(content) });
-  }
-
   function addBubble(role, text, meta = {}) {
     const row = document.createElement("div");
-    row.className = "row " + (role === "user" ? "user" : "assistant");
+    row.className = "row " + role;
 
     if (role === "assistant") {
-      const avatar = document.createElement("img");
-      avatar.className = "mini-avatar";
-      avatar.src = "assets/MA.png";
-      avatar.alt = "MA";
-      row.appendChild(avatar);
+      const img = document.createElement("img");
+      img.src = "assets/MA.png";
+      img.className = "mini-avatar";
+      row.appendChild(img);
     }
 
     const bubble = document.createElement("div");
-    bubble.className = "bubble " + (role === "user" ? "user" : "assistant");
+    bubble.className = "bubble " + role;
     bubble.textContent = safe(text);
 
-    const tags = normalizeTags(meta.tags);
-    if (tags.length) {
+    if (meta.tags?.length) {
       const metaEl = document.createElement("div");
       metaEl.className = "meta";
-      tags.forEach((t) => {
+      meta.tags.forEach(t => {
         const tag = document.createElement("span");
         tag.className = "tag " + (t.color || "");
         tag.textContent = t.label;
@@ -148,85 +49,21 @@
 
     row.appendChild(bubble);
     logEl.appendChild(row);
-    scrollToBottom();
-  }
-
-  function checkEndpoint() {
-    if (!RENDER_API_URL) {
-      addBubble(
-        "assistant",
-        "No endpoint set.\nPaste your Render URL into app.js.\nExample:\nhttps://your-app.onrender.com",
-        { tags: [{ label: "CL", color: "blue" }] }
-      );
-      setStatus("Set RENDER_API_URL in app.js.");
-      return false;
-    }
-    if (!/^https?:\/\//i.test(RENDER_API_URL)) {
-      addBubble("assistant", "That endpoint isn’t a URL. It must start with https://", {
-        tags: [{ label: "CL", color: "blue" }],
-      });
-      setStatus("Invalid RENDER_API_URL.");
-      return false;
-    }
-    return true;
-  }
-
-  function toneLabel(v) {
-    if (v === "concise") return "Concise";
-    if (v === "insulting") return "Insulting";
-    return "Casual (fun)";
+    logEl.scrollTop = logEl.scrollHeight;
   }
 
   async function callBackend() {
-    const payload = {
-      messages,
-      roastLevel: Number(roastEl.value),
-      mode: modeEl.value,
-      toneMode: toneEl ? toneEl.value : "casual",
-    };
-
-    let res;
-    try {
-      res = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } catch (networkErr) {
-      throw new Error(`Network error (likely CORS/blocked): ${networkErr?.message || networkErr}`);
-    }
-
-    const text = await res.text().catch(() => "");
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text || "Request failed"}`);
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error(`Backend returned non-JSON: ${text.slice(0, 300)}`);
-    }
-
-    return {
-      reply: safe(data?.reply ?? "(no reply)"),
-      tags: normalizeTags(data?.tags),
-    };
-  }
-
-  // Auto-resize composer (iMessage-ish), capped
-  function autoResize() {
-    input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 110) + "px";
-  }
-  input.addEventListener("input", autoResize);
-
-  roastEl.addEventListener("input", () => {
-    roastLabel.textContent = String(roastEl.value);
-  });
-
-  if (toneEl) {
-    toneEl.addEventListener("change", () => {
-      setStatus(`Tone: ${toneLabel(toneEl.value)}.`);
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages,
+        toneMode: toneEl.value
+      })
     });
+
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
   }
 
   form.addEventListener("submit", async (e) => {
@@ -234,54 +71,29 @@
     const text = input.value.trim();
     if (!text) return;
 
-    if (!checkEndpoint()) return;
-
     input.value = "";
-    autoResize();
-
-    pushMessage("user", text);
+    messages.push({ role: "user", content: text });
     addBubble("user", text);
 
-    setBusy(true);
-    setStatus("Distilling…");
+    sendBtn.disabled = true;
+    statusEl.textContent = "Distilling…";
 
     try {
-      const { reply, tags } = await callBackend();
-      pushMessage("assistant", reply);
-      addBubble("assistant", reply, { tags });
-      setStatus(`Ready. Tone: ${toneEl ? toneLabel(toneEl.value) : "Casual (fun)"}.`);
+      const data = await callBackend();
+      messages.push({ role: "assistant", content: data.reply });
+      addBubble("assistant", data.reply, data);
+      statusEl.textContent = "Ready.";
     } catch (err) {
-      console.error(err);
-      addBubble("assistant", `Proxy failed.\n${String(err?.message || err)}`, {
-        tags: [{ label: "TR", color: "green" }],
-      });
-      setStatus("Error. Check logs.");
+      addBubble("assistant", "Proxy failed. Check Render.");
+      statusEl.textContent = "Error.";
     } finally {
-      setBusy(false);
-      setTimeout(scrollToBottom, 50);
+      sendBtn.disabled = false;
     }
   });
 
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      form.requestSubmit();
-    }
-  });
-
-  // Opening line (neutral; user controls tone from selector)
   addBubble(
     "assistant",
-    "Tell me three things:\n" +
-      "your goal,\n" +
-      "your audience,\n" +
-      "and what you already tried.\n\n" +
-      "Pick a tone if you want.\n" +
-      "I’ll still drag you back to marketing.\n\n" +
-      "CL.\n" +
-      "Then ME.",
+    "Tell me what you’re trying to do.\nWho it’s for.\nAnd what you already tried.\n\nPick a tone if you want.\nI’ll still pull it back to marketing.",
     { tags: [{ label: "CL", color: "blue" }, { label: "ME", color: "green" }] }
   );
-
-  setStatus(`Ready. Tone: ${toneEl ? toneLabel(toneEl.value) : "Casual (fun)"}.`);
 })();
