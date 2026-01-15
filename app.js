@@ -1,16 +1,10 @@
-/* app.js — Marketing Alchemist Roast Chat (GitHub Pages)
-   - Static frontend (GitHub Pages)
-   - Calls your Render proxy (API key stays server-side)
-   - ONLY EDIT: RENDER_API_URL (base or full /api/chat)
-*/
-
 (() => {
-  // ✅ Paste either:
-  // - "https://your-app.onrender.com"
-  // - "https://your-app.onrender.com/api/chat"
-  const RENDER_API_URL = "https://ma-insult.onrender.com"; // <-- your current value
+  // Paste either:
+  // "https://your-app.onrender.com"
+  // OR "https://your-app.onrender.com/api/chat"
+  const RENDER_API_URL = "PASTE_YOUR_RENDER_LINK_HERE";
 
-  // ---- DOM ----
+  const phoneEl = document.getElementById("phone");
   const logEl = document.getElementById("log");
   const form = document.getElementById("form");
   const input = document.getElementById("input");
@@ -20,79 +14,119 @@
   const roastLabel = document.getElementById("roastLabel");
   const modeEl = document.getElementById("mode");
 
-  if (!logEl || !form || !input || !sendBtn || !statusEl || !roastEl || !roastLabel || !modeEl) {
-    console.error("Missing required DOM nodes. Check element IDs in index.html.");
+  if (!phoneEl || !logEl || !form || !input || !sendBtn || !statusEl || !roastEl || !roastLabel || !modeEl) {
+    console.error("Missing DOM nodes. Check IDs in index.html.");
     return;
   }
 
-  // ---- State ----
+  // ===== Viewport stability (kills iOS address-bar jumps) =====
+  function setAppHeight() {
+    // Use innerHeight for stable layout (works better than 100vh on iOS)
+    const h = window.innerHeight;
+    document.documentElement.style.setProperty("--app-height", `${h}px`);
+  }
+  setAppHeight();
+  window.addEventListener("resize", setAppHeight);
+  window.addEventListener("orientationchange", () => setTimeout(setAppHeight, 50));
+
+  // Prevent page-level bounce/overscroll
+  document.addEventListener("touchmove", (e) => {
+    // allow scrolling inside log only
+    const inThread = e.target && (e.target.closest && e.target.closest("#log"));
+    if (!inThread) e.preventDefault();
+  }, { passive: false });
+
+  // ===== State =====
   const messages = [];
   let inFlight = false;
 
-  // ---- Helpers ----
   const safe = (s) => String(s ?? "");
 
-  function nowTime() {
-    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  function normalizeEndpoint(raw) {
+    let url = safe(raw).trim();
+    if (!url) return "";
+    url = url.replace(/\/+$/, "");
+    if (!/\/api\/chat$/i.test(url)) url += "/api/chat";
+    return url;
   }
-
-  function setStatus(text) {
-    statusEl.textContent = text;
-  }
-
-  function setBusy(busy) {
-    inFlight = busy;
-    sendBtn.disabled = busy;
-    roastEl.disabled = busy;
-    modeEl.disabled = busy;
-    input.disabled = busy;
-  }
+  const ENDPOINT = normalizeEndpoint(RENDER_API_URL);
 
   function normalizeTags(tags) {
     if (!Array.isArray(tags)) return [];
-    return tags.slice(0, 5).map((t) => ({
+    return tags.slice(0, 5).map(t => ({
       label: safe(t?.label).slice(0, 40),
       color: (t?.color === "green" || t?.color === "blue") ? t.color : ""
     }));
+  }
+
+  function setBusy(b) {
+    inFlight = b;
+    sendBtn.disabled = b;
+    input.disabled = b;
+    roastEl.disabled = b;
+    modeEl.disabled = b;
+  }
+
+  function setStatus(s) {
+    statusEl.textContent = s;
+  }
+
+  function scrollToBottom() {
+    requestAnimationFrame(() => {
+      logEl.scrollTop = logEl.scrollHeight;
+    });
   }
 
   function pushMessage(role, content) {
     messages.push({ role, content: safe(content) });
   }
 
-  function scrollLogToBottom() {
-    // rAF ensures DOM has painted before scrolling
-    requestAnimationFrame(() => {
-      logEl.scrollTop = logEl.scrollHeight;
-    });
+  function addBubble(role, text, meta = {}) {
+    const row = document.createElement("div");
+    row.className = "row " + (role === "user" ? "user" : "assistant");
+
+    if (role === "assistant") {
+      const avatar = document.createElement("img");
+      avatar.className = "mini-avatar";
+      avatar.src = "assets/MA.png";
+      avatar.alt = "MA";
+      row.appendChild(avatar);
+    }
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble " + (role === "user" ? "user" : "assistant");
+    bubble.textContent = safe(text);
+
+    const tags = normalizeTags(meta.tags);
+    if (tags.length) {
+      const metaEl = document.createElement("div");
+      metaEl.className = "meta";
+      tags.forEach(t => {
+        const tag = document.createElement("span");
+        tag.className = "tag " + (t.color || "");
+        tag.textContent = t.label;
+        metaEl.appendChild(tag);
+      });
+      bubble.appendChild(metaEl);
+    }
+
+    row.appendChild(bubble);
+    logEl.appendChild(row);
+    scrollToBottom();
   }
 
-  function normalizeEndpoint(raw) {
-    let url = safe(raw).trim();
-    if (!url) return "";
-    // remove trailing slash
-    url = url.replace(/\/+$/, "");
-    // If they pasted base domain, append /api/chat
-    if (!/\/api\/chat$/i.test(url)) url += "/api/chat";
-    return url;
-  }
-
-  const ENDPOINT = normalizeEndpoint(RENDER_API_URL);
-
-  function checkRenderUrl() {
+  function checkEndpoint() {
     if (!RENDER_API_URL || RENDER_API_URL.includes("PASTE_YOUR_RENDER_LINK_HERE")) {
-      addMessageToLog(
-        "assistant",
-        "Your experiment is missing a reagent.\n\nPaste your Render endpoint into RENDER_API_URL in app.js.\nExample:\nhttps://your-app.onrender.com (or /api/chat)",
+      addBubble("assistant",
+        "Paste your Render endpoint into app.js.\nExample:\nhttps://your-app.onrender.com",
         { tags: [{ label: "CL: missing endpoint", color: "blue" }] }
       );
-      setStatus("Set your Render endpoint in app.js (RENDER_API_URL).");
+      setStatus("Set RENDER_API_URL in app.js.");
       return false;
     }
     if (!/^https?:\/\//i.test(RENDER_API_URL)) {
-      addMessageToLog(
-        "assistant",
-        "That endpoint isn’t a URL. It’s a wish.\n\nRENDER_API_URL must start with http:// or https://",
+      addBubble("assistant",
+        "That endpoint isn’t a URL. It’s a wish.\nIt must start with https://",
         { tags: [{ label: "CL: invalid URL", color: "blue" }] }
       );
       setStatus("Invalid RENDER_API_URL.");
@@ -101,60 +135,6 @@
     return true;
   }
 
-  // ---- UI rendering ----
-  function addMessageToLog(role, text, meta = {}) {
-    const row = document.createElement("div");
-    row.className = "msg";
-
-    let avatar;
-    if (role === "assistant") {
-      avatar = document.createElement("img");
-      avatar.src = "assets/MA.png";
-      avatar.alt = "Marketing Alchemist";
-      avatar.className = "avatar-img";
-    } else {
-      avatar = document.createElement("div");
-      avatar.className = "avatar";
-      avatar.textContent = "YOU";
-    }
-
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-
-    const metaEl = document.createElement("div");
-    metaEl.className = "meta";
-    metaEl.textContent =
-      role === "user"
-        ? `You • ${nowTime()}`
-        : `Marketing Alchemist • ${nowTime()}`;
-
-    const textEl = document.createElement("div");
-    textEl.className = "text";
-    textEl.textContent = safe(text);
-
-    bubble.appendChild(metaEl);
-    bubble.appendChild(textEl);
-
-    const tags = normalizeTags(meta.tags);
-    if (tags.length) {
-      const tagsEl = document.createElement("div");
-      tagsEl.className = "tags";
-      tags.forEach((t) => {
-        const tag = document.createElement("span");
-        tag.className = "tag " + (t.color || "");
-        tag.textContent = t.label;
-        tagsEl.appendChild(tag);
-      });
-      bubble.appendChild(tagsEl);
-    }
-
-    row.appendChild(avatar);
-    row.appendChild(bubble);
-    logEl.appendChild(row);
-    scrollLogToBottom();
-  }
-
-  // ---- Network ----
   async function callBackend() {
     const payload = {
       messages,
@@ -180,59 +160,46 @@
     };
   }
 
-  // ---- Mobile UX: auto-resize textarea (keeps it from hijacking the screen) ----
-  function autoResizeTextarea() {
+  // iMessage-ish: auto-resize composer, but capped
+  function autoResize() {
     input.style.height = "auto";
     input.style.height = Math.min(input.scrollHeight, 110) + "px";
   }
-  input.addEventListener("input", autoResizeTextarea);
+  input.addEventListener("input", autoResize);
 
-  async function handleSend(userText) {
-    if (inFlight) return;
-    if (!checkRenderUrl()) return;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
 
-    pushMessage("user", userText);
-    addMessageToLog("user", userText);
+    if (!checkEndpoint()) return;
+
+    input.value = "";
+    autoResize();
+
+    pushMessage("user", text);
+    addBubble("user", text);
 
     setBusy(true);
-    setStatus("Distilling… (No rituals. Just causality.)");
+    setStatus("Distilling…");
 
     try {
       const { reply, tags } = await callBackend();
       pushMessage("assistant", reply);
-      addMessageToLog("assistant", reply, { tags });
+      addBubble("assistant", reply, { tags });
       setStatus("Ready.");
     } catch (err) {
       console.error(err);
-
-      const msg =
-        "Your proxy just face-planted.\n" +
-        "Good. Now we have data.\n\n" +
-        "Check:\n" +
-        "1) Render route is POST /api/chat\n" +
-        "2) CORS allows your GitHub Pages origin\n" +
-        "3) Render env has OPENAI_API_KEY set\n";
-
-      pushMessage("assistant", msg);
-      addMessageToLog("assistant", msg, { tags: [{ label: "TR: fix the route", color: "green" }] });
-      setStatus("Error calling backend. Check CORS / route / logs.");
+      addBubble("assistant",
+        "Your proxy failed.\nCheck:\n1) Render route: POST /api/chat\n2) CORS allows your GitHub Pages origin\n3) OPENAI_API_KEY exists on Render",
+        { tags: [{ label: "TR: check logs", color: "green" }] }
+      );
+      setStatus("Error. Check Render logs.");
     } finally {
       setBusy(false);
+      // Prevent jump after keyboard hide/show
+      setTimeout(scrollToBottom, 50);
     }
-  }
-
-  // ---- Events ----
-  roastEl.addEventListener("input", () => {
-    roastLabel.textContent = String(roastEl.value);
-  });
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = "";
-    autoResizeTextarea();
-    handleSend(text);
   });
 
   input.addEventListener("keydown", (e) => {
@@ -242,12 +209,10 @@
     }
   });
 
-  // ---- Boot ----
-  addMessageToLog(
-    "assistant",
+  // Boot message
+  addBubble("assistant",
     "State your goal, your audience, and what you already tried.\nIf you give me vibes, I will return them… charred.",
-    { tags: [{ label: "CL: define the goal", color: "blue" }, { label: "ME: mechanism > magic", color: "green" }] }
+    { tags: [{ label: "CL", color: "blue" }, { label: "ME", color: "green" }] }
   );
-
-  setStatus("Ready. (Mobile: no page scroll. Only the log scrolls.)");
+  setStatus("Ready.");
 })();
