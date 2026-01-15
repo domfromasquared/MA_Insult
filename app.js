@@ -1,13 +1,13 @@
-/* app.js — Marketing Alchemist Roast Chat (GitHub Pages friendly)
+/* app.js — Marketing Alchemist Roast Chat (GitHub Pages)
    - Static frontend (GitHub Pages)
-   - Calls your Render proxy (keeps OpenAI key server-side)
-   - Paste your Render link into RENDER_API_URL and you're done.
+   - Calls your Render proxy (API key stays server-side)
+   - ONLY EDIT: RENDER_API_URL
 */
 
 (() => {
-  // ✅ ONLY THING YOU NEED TO EDIT:
+  // ✅ ONLY THING YOU EDIT:
   // Example: "https://my-alchemist-proxy.onrender.com/api/chat"
-  const RENDER_API_URL = "https://ma-bottle-fill-api.onrender.com";
+  const RENDER_API_URL = "PASTE_YOUR_RENDER_LINK_HERE";
 
   // ---- DOM ----
   const logEl = document.getElementById("log");
@@ -20,7 +20,7 @@
   const modeEl = document.getElementById("mode");
 
   if (!logEl || !form || !input || !sendBtn || !statusEl || !roastEl || !roastLabel || !modeEl) {
-    console.error("Missing required DOM nodes. Make sure your index.html has the expected IDs.");
+    console.error("Missing required DOM nodes. Check element IDs in index.html.");
     return;
   }
 
@@ -29,7 +29,7 @@
   let inFlight = false;
 
   // ---- Helpers ----
-  const escape = (s) => String(s ?? "");
+  const safe = (s) => String(s ?? "");
 
   function nowTime() {
     return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -49,59 +49,14 @@
 
   function normalizeTags(tags) {
     if (!Array.isArray(tags)) return [];
-    return tags.slice(0, 5).map(t => ({
-      label: escape(t?.label).slice(0, 40),
+    return tags.slice(0, 5).map((t) => ({
+      label: safe(t?.label).slice(0, 40),
       color: (t?.color === "green" || t?.color === "blue") ? t.color : ""
     }));
   }
 
-  function addMessageToLog(role, text, meta = {}) {
-    const row = document.createElement("div");
-    row.className = "msg";
-
-    const avatar = document.createElement("div");
-    avatar.className = "avatar " + (role === "user" ? "user" : "alch");
-    avatar.textContent = role === "user" ? "YOU" : "ALCH";
-
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-
-    const metaEl = document.createElement("div");
-    metaEl.className = "meta";
-    metaEl.textContent = (role === "user")
-      ? `You • ${nowTime()}`
-      : `Marketing Alchemist • ${nowTime()}`;
-
-    const textEl = document.createElement("div");
-    textEl.className = "text";
-    textEl.textContent = escape(text);
-
-    bubble.appendChild(metaEl);
-    bubble.appendChild(textEl);
-
-    const tags = normalizeTags(meta.tags);
-    if (tags.length) {
-      const tagsEl = document.createElement("div");
-      tagsEl.className = "tags";
-
-      tags.forEach(t => {
-        const tag = document.createElement("span");
-        tag.className = "tag " + (t.color || "");
-        tag.textContent = t.label;
-        tagsEl.appendChild(tag);
-      });
-
-      bubble.appendChild(tagsEl);
-    }
-
-    row.appendChild(avatar);
-    row.appendChild(bubble);
-    logEl.appendChild(row);
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-
   function pushMessage(role, content) {
-    messages.push({ role, content: escape(content) });
+    messages.push({ role, content: safe(content) });
   }
 
   function checkRenderUrl() {
@@ -126,9 +81,64 @@
     return true;
   }
 
+  // ---- UI rendering ----
+  function addMessageToLog(role, text, meta = {}) {
+    const row = document.createElement("div");
+    row.className = "msg";
+
+    // Avatar: user = text block, assistant = image
+    let avatar;
+    if (role === "assistant") {
+      avatar = document.createElement("img");
+      avatar.src = "assets/MA.png";
+      avatar.alt = "Marketing Alchemist";
+      avatar.className = "avatar-img";
+    } else {
+      avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = "YOU";
+    }
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "meta";
+    metaEl.textContent =
+      role === "user"
+        ? `You • ${nowTime()}`
+        : `Marketing Alchemist • ${nowTime()}`;
+
+    const textEl = document.createElement("div");
+    textEl.className = "text";
+    textEl.textContent = safe(text);
+
+    bubble.appendChild(metaEl);
+    bubble.appendChild(textEl);
+
+    const tags = normalizeTags(meta.tags);
+    if (tags.length) {
+      const tagsEl = document.createElement("div");
+      tagsEl.className = "tags";
+      tags.forEach((t) => {
+        const tag = document.createElement("span");
+        tag.className = "tag " + (t.color || "");
+        tag.textContent = t.label;
+        tagsEl.appendChild(tag);
+      });
+      bubble.appendChild(tagsEl);
+    }
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    logEl.appendChild(row);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ---- Network ----
   async function callBackend() {
     const payload = {
-      messages: messages,               // server can ignore any extra keys; we keep it simple
+      messages,
       roastLevel: Number(roastEl.value),
       mode: modeEl.value
     };
@@ -146,7 +156,7 @@
 
     const data = await res.json();
     return {
-      reply: escape(data?.reply ?? "(no reply)"),
+      reply: safe(data?.reply ?? "(no reply)"),
       tags: normalizeTags(data?.tags)
     };
   }
@@ -155,7 +165,7 @@
     if (inFlight) return;
     if (!checkRenderUrl()) return;
 
-    // store + render user message
+    // Store + render user message
     pushMessage("user", userText);
     addMessageToLog("user", userText);
 
@@ -163,12 +173,9 @@
     setStatus("Distilling… (No rituals. Just causality.)");
 
     try {
-      // Send full convo
       const { reply, tags } = await callBackend();
-
       pushMessage("assistant", reply);
       addMessageToLog("assistant", reply, { tags });
-
       setStatus("Ready.");
     } catch (err) {
       console.error(err);
@@ -183,14 +190,13 @@
 
       pushMessage("assistant", msg);
       addMessageToLog("assistant", msg, { tags: [{ label: "TR: fix the route", color: "green" }] });
-
       setStatus("Error calling backend. Check CORS / route / logs.");
     } finally {
       setBusy(false);
     }
   }
 
-  // ---- UI wiring ----
+  // ---- Events ----
   roastEl.addEventListener("input", () => {
     roastLabel.textContent = String(roastEl.value);
   });
@@ -210,11 +216,12 @@
     }
   });
 
-  // ---- Boot message ----
+  // ---- Boot ----
   addMessageToLog(
     "assistant",
     "State your goal, your audience, and what you already tried.\nIf you give me vibes, I will return them… charred.",
     { tags: [{ label: "CL: define the goal", color: "blue" }, { label: "ME: mechanism > magic", color: "green" }] }
   );
+
   setStatus("Paste your Render endpoint into RENDER_API_URL in app.js.");
 })();
