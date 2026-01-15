@@ -8,7 +8,7 @@
   const statusEl = document.getElementById("status");
   const toneEl = document.getElementById("tone");
 
-  statusEl.textContent = "Ver. 1.2";
+  statusEl.textContent = "Ver. 1.3";
 
   const messages = [];
   const safe = (s) => String(s ?? "");
