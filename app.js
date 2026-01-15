@@ -1,3 +1,4 @@
+
 (() => {
   // Paste either:
   // "https://your-app.onrender.com"
@@ -19,9 +20,8 @@
     return;
   }
 
-  // ===== Viewport stability (kills iOS address-bar jumps) =====
+  // ===== Viewport stability (kills iOS address bar jumps) =====
   function setAppHeight() {
-    // Use innerHeight for stable layout (works better than 100vh on iOS)
     const h = window.innerHeight;
     document.documentElement.style.setProperty("--app-height", `${h}px`);
   }
@@ -29,10 +29,9 @@
   window.addEventListener("resize", setAppHeight);
   window.addEventListener("orientationchange", () => setTimeout(setAppHeight, 50));
 
-  // Prevent page-level bounce/overscroll
+  // Prevent page-level bounce/overscroll (allow scroll only inside log)
   document.addEventListener("touchmove", (e) => {
-    // allow scrolling inside log only
-    const inThread = e.target && (e.target.closest && e.target.closest("#log"));
+    const inThread = e.target && e.target.closest && e.target.closest("#log");
     if (!inThread) e.preventDefault();
   }, { passive: false });
 
@@ -119,15 +118,15 @@
     if (!RENDER_API_URL || RENDER_API_URL.includes("PASTE_YOUR_RENDER_LINK_HERE")) {
       addBubble("assistant",
         "Paste your Render endpoint into app.js.\nExample:\nhttps://your-app.onrender.com",
-        { tags: [{ label: "CL: missing endpoint", color: "blue" }] }
+        { tags: [{ label: "CL", color: "blue" }] }
       );
       setStatus("Set RENDER_API_URL in app.js.");
       return false;
     }
     if (!/^https?:\/\//i.test(RENDER_API_URL)) {
       addBubble("assistant",
-        "That endpoint isn’t a URL. It’s a wish.\nIt must start with https://",
-        { tags: [{ label: "CL: invalid URL", color: "blue" }] }
+        "That endpoint isn’t a URL. It must start with https://",
+        { tags: [{ label: "CL", color: "blue" }] }
       );
       setStatus("Invalid RENDER_API_URL.");
       return false;
@@ -160,7 +159,7 @@
     };
   }
 
-  // iMessage-ish: auto-resize composer, but capped
+  // Auto-resize composer (iMessage-ish), capped
   function autoResize() {
     input.style.height = "auto";
     input.style.height = Math.min(input.scrollHeight, 110) + "px";
@@ -191,13 +190,12 @@
     } catch (err) {
       console.error(err);
       addBubble("assistant",
-        "Your proxy failed.\nCheck:\n1) Render route: POST /api/chat\n2) CORS allows your GitHub Pages origin\n3) OPENAI_API_KEY exists on Render",
-        { tags: [{ label: "TR: check logs", color: "green" }] }
+        "Proxy failed.\nCheck:\n1) POST /api/chat\n2) CORS origin\n3) OPENAI_API_KEY on Render",
+        { tags: [{ label: "TR", color: "green" }] }
       );
       setStatus("Error. Check Render logs.");
     } finally {
       setBusy(false);
-      // Prevent jump after keyboard hide/show
       setTimeout(scrollToBottom, 50);
     }
   });
@@ -209,10 +207,19 @@
     }
   });
 
-  // Boot message
-  addBubble("assistant",
-    "State your goal, your audience, and what you already tried.\nIf you give me vibes, I will return them… charred.",
+  // ✅ Updated opening line (your requested change)
+  addBubble(
+    "assistant",
+    "Tell me three things:\n" +
+      "your goal,\n" +
+      "your audience,\n" +
+      "and what you already tried.\n\n" +
+      "You can bring vibes.\n" +
+      "I’ll translate them into marketing.\n\n" +
+      "CL.\n" +
+      "Then ME.",
     { tags: [{ label: "CL", color: "blue" }, { label: "ME", color: "green" }] }
   );
+
   setStatus("Ready.");
-})();
+})();})();
