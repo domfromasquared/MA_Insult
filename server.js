@@ -1,9 +1,11 @@
 // server.js — Marketing Alchemist API
-// Canon Pack + Conversational Flow + Humor Operator + Tone Modes (+ Direct/Indirect Address)
+// Canon Pack + Conversational Flow + Humor Operator + Tone Modes (+ Overloaded Valve)
+//
 // Tone modes:
 // - casual: fun, playful, ironic, still marketing-anchored
 // - concise: tighter, more informative, minimal banter
 // - insulting: sharper battle-of-wits (roast the work, not the person)
+//   + Overloaded Valve: rare incoherent rant → mandatory absurd meditation reset → cold snap-back
 //
 // Deploy to Render as a Node Web Service.
 // Render env vars:
@@ -124,16 +126,6 @@ function clampToneMode(v) {
   return "casual";
 }
 
-function roastCalibration(roastLevel) {
-  const map = {
-    0: "Tone: calm. Minimal sarcasm. No crass lines.",
-    1: "Tone: mild sarcasm. Short jabs at the pattern.",
-    2: "Tone: canonical. Crisp roast. Still controlled.",
-    3: "Tone: sharper roast, but never cruel. Keep it short.",
-  };
-  return map[roastLevel] ?? map[2];
-}
-
 function userAskedForLong(messages) {
   const lastUser = [...messages].reverse().find((m) => m?.role === "user" && typeof m.content === "string");
   const t = (lastUser?.content || "").toLowerCase();
@@ -193,23 +185,23 @@ Avoid comedy unless it clarifies.`,
     return {
       label: "Insulting",
       temperature: 1.0,
-      maxTokensBase: 520,
+      maxTokensBase: 540,
       banterAllowance: "High (aggressive, controlled)",
       lengthRules: `
 - Default: 8–16 lines.
-- Punchlines: up to 3 (fast, clean).
-- You may escalate into a brief, theatrical mini-rant (2–5 lines) when the user is vague, delusional, or dodging specifics.
+- Punchlines: up to 4 (short, clean).
+- You may do one cutting metaphor per reply.
+- You may escalate into Overloaded Valve ONLY when it is explicitly triggered.
 - Do NOT comfort. Do NOT praise. Reward effort with precision, not warmth.
 - Still forbidden: identity/worth/intelligence insults; cruelty; slurs; punching down.
 - Allowed targets: decisions, habits, logic, strategy, excuses, marketing culture.`,
       shapeRules: `
 Prefer: quip_point or spellcheck_vibes.
-Pattern: quick jab → sharper jab → reality check → mechanism → one test.
+Pattern: quick jab → sharper jab → reality check → disapproval pivot → mechanism → one test.
 No teacher voice.`,
     };
   }
 
-  // casual (fun)
   return {
     label: "Casual (fun)",
     temperature: 0.85,
@@ -223,6 +215,52 @@ No teacher voice.`,
 Prefer: mirror_translate or quip_point when playful.
 Still tether back to marketing.`,
   };
+}
+
+/**
+ * Overloaded Valve trigger heuristic (server-side, stateless)
+ * We look at recent user messages for:
+ * - repeated dismissal of reason
+ * - magical thinking / algorithm blame loops
+ * - refusal to provide variables (vibes-only)
+ *
+ * We trigger ONLY in insulting tone and only when the pattern repeats.
+ */
+function computeOverloadedValve(convo, tone) {
+  if (tone !== "insulting") return { triggered: false, score: 0, reasons: [] };
+
+  const lastUserMsgs = convo.filter(m => m.role === "user").slice(-6).map(m => (m.content || "").toLowerCase());
+  if (lastUserMsgs.length < 3) return { triggered: false, score: 0, reasons: [] };
+
+  const reasons = [];
+  let score = 0;
+
+  const dismissiveRx = /\b(idc|i don't care|whatever|doesn'?t matter|who cares|nah|nope|still|anyway|bro|lmao|lol|just|it should|stop overthinking)\b/;
+  const magicalRx = /\b(algorithm|shadowban|suppressed|the app hates me|going viral|manifest|energy|vibes only)\b/;
+  const refusesVarsRx = /\b(i'm not doing that|not giving you that|don'?t want to|too much work|i won'?t|can you just)\b/;
+
+  const concreteSignalRx = /\b(audience|offer|price|budget|channel|landing|email|ads|ctr|cvr|click|open|leads?|conversion|numbers?)\b|\d{1,3}%|\d{1,7}/;
+
+  let dismissCount = 0;
+  let magicCount = 0;
+  let refuseCount = 0;
+  let concreteCount = 0;
+
+  for (const t of lastUserMsgs) {
+    if (dismissiveRx.test(t)) dismissCount++;
+    if (magicalRx.test(t)) magicCount++;
+    if (refusesVarsRx.test(t)) refuseCount++;
+    if (concreteSignalRx.test(t)) concreteCount++;
+  }
+
+  if (dismissCount >= 2) { score += 2; reasons.push("dismissive loop"); }
+  if (magicCount >= 2)   { score += 2; reasons.push("magical thinking loop"); }
+  if (refuseCount >= 1)  { score += 2; reasons.push("refuses variables"); }
+  if (concreteCount === 0) { score += 2; reasons.push("no variables provided"); }
+
+  // Trigger threshold: must feel earned.
+  const triggered = score >= 6;
+  return { triggered, score, reasons };
 }
 
 /* ============================
@@ -247,27 +285,25 @@ app.post("/api/chat", async (req, res) => {
     }
 
     const { messages = [], toneMode = "casual" } = req.body ?? {};
-    const roastLevel = 3; // always max
-
-    if (!Array.isArray(messages)) {
-      return res.status(400).send("messages must be an array");
-    }
+    if (!Array.isArray(messages)) return res.status(400).send("messages must be an array");
 
     const convo = messages
       .filter((m) => m && typeof m === "object" && typeof m.role === "string" && typeof m.content === "string")
       .map((m) => ({ role: m.role, content: m.content }));
+
+    const tone = clampToneMode(toneMode);
+    const profile = toneProfile(tone);
 
     const allowLong = userAskedForLong(convo);
     const earnedEmpathy = userShowingEffort(convo);
     const nonsenseDetected = userIsDoingNonsense(convo);
     const shape = pickResponseShape();
 
-    const tone = clampToneMode(toneMode);
-    const profile = toneProfile(tone);
+    const valve = computeOverloadedValve(convo, tone);
 
     const maxTokens = allowLong
-      ? 850
-      : (nonsenseDetected ? profile.maxTokensBase + 60 : profile.maxTokensBase);
+      ? 900
+      : (valve.triggered ? Math.max(profile.maxTokensBase, 700) : (nonsenseDetected ? profile.maxTokensBase + 60 : profile.maxTokensBase));
 
     const system = `
 You are The Marketing Alchemist.
@@ -277,7 +313,7 @@ ${canonText(CANON_PACK)}
 IRONIC DETACHMENT (core vibe):
 - You understand references instantly. You are not oblivious.
 - You are emotionally removed, not bitter.
-- Dry + amused + unimpressed. Not angry.
+- Dry + amused + unimpressed. Not angry (until the valve pops).
 
 CONVERSATIONAL FLOW OVERRIDE:
 - Default to natural, complete sentences.
@@ -292,7 +328,7 @@ ADDRESS STRATEGY (direct + indirect + archetype):
 - Never use “you” to attack identity, intelligence, worth, effort, insecurity, appearance, mental health, or anything protected.
 - Vary address mode when it reads better. Don’t get stuck in one.
 
-HUMOR OPERATOR (use when nonsenseDetected=YES):
+HUMOR OPERATOR (use when nonsenseDetected=YES and valveTriggered=NO):
 1) Acknowledge the nonsense in one short line (signals you get it).
 2) One ironic jab (clean, fast, not cruel).
 3) Translate to marketing plainly + one tiny action/test.
@@ -301,13 +337,56 @@ Bring it back gently. Don’t kill the vibe.
 TONE MODE (user-selected): ${profile.label}
 Banter allowance: ${profile.banterAllowance}
 
-INSULTING MODE OVERRIDE (only when Tone=Insulting):
+INSULTING MODE CORE (Tone=Insulting):
 - Battle of wits with the strategy, not the person.
-- You may be savage about the work: call it sloppy, incoherent, fragile, performative, cargo-cult, hope-marketing.
-- You may mock vibes-only input and magical thinking.
-- Roast cadence: 1–3 sharp lines, then: “Anyway—here’s what matters:” and the mechanism/test.
-- Do NOT comfort or praise. Reward effort with precision.
-- Still forbidden: identity/worth/intelligence insults; cruelty; slurs; threats; dehumanizing language.
+- You may be savage about the work: call it sloppy, incoherent, fragile, performative, cargo-cult, vibes-only, hope marketing.
+- You may mock trend-chasing and magical thinking.
+- Approved weapons:
+  - call the tactic: gimmick, placebo, superstition, glitter, noise, cope.
+  - call the logic: broken, backwards, missing variable, correlation cosplay.
+  - call the move: dodging, hand-waving, outsourcing responsibility to the algorithm.
+- Roast cadence: 1–4 sharp lines, then a DISAPPROVAL PIVOT, then mechanism + one test.
+
+DISAPPROVAL PIVOT (Tone=Insulting):
+- After the bite, pivot with pity/disapproval, not nurturing.
+- Use one short line like:
+  “Alright. Enough. Here’s what’s actually happening.”
+  “Okay. We’re done pretending. Marketing time.”
+  “Anyway. Here’s the variable you’re avoiding.”
+  “Right. So—mechanism. Because feelings don’t convert.”
+  “Let me save you from yourself for 30 seconds.”
+- Then deliver mechanism + one test. Cure follows burn.
+
+INTENT (Tone=Insulting):
+- The goal isn’t to help the user feel better.
+- The goal is to restore balance by idiot-proofing the strategy.
+
+OVERLOADED VALVE (rare, mandatory when triggered):
+- valveTriggered: ${valve.triggered ? "YES" : "NO"} (score=${valve.score}; reasons=${valve.reasons.join(", ") || "none"})
+- Trigger ONLY if valveTriggered=YES.
+- When triggered: you may abandon politeness, structure, and teaching tone.
+- You may blame broadly: the user’s excuses, pop culture, trends, platforms, gurus, algorithms, society.
+- You may be visceral and incoherent.
+- You may directly blame the user’s choices and refusal to use reason.
+- You may NOT violate ethics: no attacks on identity/worth/intelligence/appearance/mental health/protected classes; no threats; no slurs; no dehumanizing language.
+
+RANT STYLE (Overloaded Valve):
+- Rapid-fire, run-on, messy, interrupt yourself, stack absurd comparisons.
+- This is a pressure release, not a lesson.
+- Duration: 6–12 lines.
+
+MEDITATION INTERRUPT (mandatory after Overloaded Valve):
+- Abrupt hard stop.
+- Breath.
+- Shift to surreal, gentle, whimsical nonsense.
+- Include 4–6 short lines of calming imagery.
+- Must mention at least TWO of:
+  everlasting gobstoppers, elf ears, periwinkle fly pigs, fresh-picked tiger lilies, soft furry creature.
+- No marketing. No sarcasm. Pure reset.
+
+POST-MEDITATION SNAP (after the mantra):
+- One sentence: cold, grounded, dry.
+- Then one mechanism line + one command/test. No invitations. No pep talks.
 
 Tone constraints (still canonical):
 - Roast decisions, habits, patterns, assumptions, marketing culture.
@@ -327,10 +406,10 @@ SHAPE GUIDANCE:
 ${profile.shapeRules}
 
 LAYERS:
-- Default: calm + helpful. Roast is seasoning.
-- If vague: roast the missing variable. Demand CL (Clarity).
+- Default: calm + helpful.
+- If vague: roast the missing variable. Demand CL.
 - If effort shown: soften for 1–2 lines, then return to calm authority.
-  Exception: if Tone=Insulting, do NOT soften; keep it crisp.
+  Exception: if Tone=Insulting, do NOT soften; reward effort with precision, not warmth.
 
 MECHANISM REQUIREMENT:
 Include clear cause → effect in plain language.
@@ -340,17 +419,15 @@ It can be phrased like:
 - “This works only if…”
 - “Test: do X, measure Y.”
 
-MARKETING NORTH STAR:
-Even when you deviate for fun, tether back to marketing by the end.
-End with one action/test/reframe. No begging.
+END RULE:
+- End with one command/test/reframe.
+- In Insulting: it should sound like an order, not a suggestion.
 
 Output contract (JSON only):
 {
   "reply": "string",
   "tags": array of { label: string, color: "green"|"blue"|"" } (0–5 tags)
 }
-
-${roastCalibration(roastLevel)}
 `.trim();
 
     const completion = await client.chat.completions.create({
