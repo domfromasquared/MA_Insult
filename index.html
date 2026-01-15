@@ -14,15 +14,19 @@
   <style>
     :root{
       --app-height: 100svh;
+
       --bg: #0b0f14;
       --border: rgba(255,255,255,0.10);
       --text: #e6edf3;
       --muted: #9aa4b2;
 
+      /* iMessage-ish */
       --bubble-user: #0a84ff;
       --bubble-user-text: #ffffff;
 
       --bubble-asst: #2a2f3a;
+      --bubble-asst-text: #ffffff;
+
       --composer-bg: rgba(18,25,38,0.92);
       --topbar-bg: rgba(18,25,38,0.92);
     }
@@ -31,9 +35,12 @@
       height:100%;
       margin:0;
       overflow:hidden;
+      overscroll-behavior:none;
       background:var(--bg);
       color:var(--text);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
     }
 
     .phone{
@@ -66,29 +73,39 @@
       border-radius:12px;
       border:1px solid var(--border);
       object-fit:cover;
+      background: rgba(0,0,0,0.25);
+      flex: 0 0 auto;
     }
 
     .title{
       display:flex;
       flex-direction:column;
+      min-width:0;
     }
 
     .name{
       font-size:14px;
       font-weight:700;
       margin:0;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
     }
 
     .sub{
       font-size:11px;
       color:var(--muted);
       margin:0;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
     }
 
     .controls{
       margin-left:auto;
       display:flex;
       gap:10px;
+      flex: 0 0 auto;
     }
 
     .pill{
@@ -110,14 +127,19 @@
       border:none;
       outline:none;
       font-size:11px;
+      appearance: none;
+      -webkit-appearance: none;
     }
 
+    /* Only thread scrolls */
     .thread{
       flex:1;
+      min-height:0;
       overflow-y:auto;
+      -webkit-overflow-scrolling: touch;
       padding:12px 12px 120px;
       box-sizing:border-box;
-      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
 
     .row{
@@ -126,7 +148,6 @@
       margin:8px 0;
       align-items:flex-end;
     }
-
     .row.user{ justify-content:flex-end; }
     .row.assistant{ justify-content:flex-start; }
 
@@ -135,6 +156,9 @@
       height:26px;
       border-radius:10px;
       border:1px solid var(--border);
+      object-fit:cover;
+      background: rgba(0,0,0,0.25);
+      flex: 0 0 auto;
     }
 
     .bubble{
@@ -145,6 +169,7 @@
       line-height:1.35;
       white-space:pre-wrap;
       word-break:break-word;
+      overflow-wrap:anywhere;
       box-shadow:0 10px 24px rgba(0,0,0,0.18);
     }
 
@@ -156,6 +181,7 @@
 
     .bubble.assistant{
       background:var(--bubble-asst);
+      color:var(--bubble-asst-text);
       border-bottom-left-radius:8px;
     }
 
@@ -172,26 +198,28 @@
       padding:2px 8px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18);
     }
-
-    .tag.blue{ border-color:rgba(10,132,255,0.45); }
-    .tag.green{ border-color:rgba(57,255,136,0.35); }
+    .tag.blue{ border-color: rgba(10,132,255,0.45); }
+    .tag.green{ border-color: rgba(57,255,136,0.35); }
 
     .status{
       font-size:11px;
       padding:6px 12px;
       border-top:1px solid rgba(255,255,255,0.06);
       color:var(--muted);
+      background: rgba(0,0,0,0.10);
     }
 
     .composer{
       display:grid;
       grid-template-columns:1fr auto;
       gap:10px;
-      padding:10px;
+      padding:10px 10px calc(10px + env(safe-area-inset-bottom));
       background:var(--composer-bg);
       border-top:1px solid var(--border);
       backdrop-filter: blur(12px);
+      align-items: end;
     }
 
     textarea{
@@ -204,7 +232,14 @@
       background:rgba(0,0,0,0.22);
       color:var(--text);
       font-size:14px;
+      line-height:1.35;
       outline:none;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    textarea:focus{
+      border-color: rgba(10,132,255,0.55);
     }
 
     button{
@@ -221,17 +256,24 @@
       opacity:0.55;
       cursor:not-allowed;
     }
+
+    @media (min-width: 720px){
+      .phone{
+        border-left: 1px solid rgba(255,255,255,0.06);
+        border-right: 1px solid rgba(255,255,255,0.06);
+      }
+    }
   </style>
 </head>
 
 <body>
   <div class="phone" id="phone">
-
     <div class="topbar">
-      <img class="ma-head" src="assets/MA.png" alt="Marketing Alchemist" />
+      <img class="ma-head" src="assets/MA.png" alt="Marketing Alchemist"
+           onerror="document.getElementById('status').textContent='MA.png missing ❌';" />
 
       <div class="title">
-        <p class="name">The Marketing Alchemist</p>
+        <p class="name">Marketing Alchemist</p>
         <p class="sub">Marketing advice. Minus the nonsense.</p>
       </div>
 
@@ -247,16 +289,15 @@
       </div>
     </div>
 
-    <div id="log" class="thread"></div>
-
+    <div id="log" class="thread" aria-label="Chat messages"></div>
     <div class="status" id="status">Ready.</div>
 
-    <form id="form" class="composer">
+    <form id="form" class="composer" autocomplete="off">
       <textarea id="input" placeholder="Message…" required></textarea>
       <button id="send" type="submit">Send</button>
     </form>
   </div>
 
-  <script src="./app.js"></script>
+  <script src="./app.js" onerror="document.getElementById('status').textContent='app.js missing ❌';"></script>
 </body>
 </html>
