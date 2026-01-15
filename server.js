@@ -1,5 +1,5 @@
 // server.js — Marketing Alchemist API
-// Canon Pack + Thread Style + Layers + Brevity Clamp (looser) + Ironic Detachment “Humor Operator”
+// Canon Pack + Thread Style + Layers + Looser Brevity + Ironic Detachment “Humor Operator”
 //
 // Deploy to Render as a Node Web Service.
 // Render env vars:
@@ -34,7 +34,6 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 /* ============================
    Canon Pack (compact, high-signal)
-   Sources: Character Bible, Episode Study Guide, Periodic Table, Style Sheet
    ============================ */
 const CANON_PACK = {
   prime_axiom: "Marketing is not magic.",
@@ -146,7 +145,6 @@ function userAskedForLong(messages) {
 }
 
 function userShowingEffort(messages) {
-  // Effort = specifics + attempts + constraints. Not “I’m trying”.
   const lastUser = [...messages].reverse().find((m) => m?.role === "user" && typeof m.content === "string");
   const t = (lastUser?.content || "").toLowerCase();
 
@@ -173,8 +171,6 @@ function userIsDoingNonsense(messages) {
   );
 }
 
-// Light variety so it doesn't feel like a script.
-// (Not random chaos; just enough to avoid “template smell”.)
 function pickResponseShape() {
   const shapes = ["quip_point", "mirror_translate", "mini_diag", "spellcheck_vibes"];
   return shapes[Math.floor(Math.random() * shapes.length)];
@@ -209,7 +205,6 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).send("messages must be an array");
     }
 
-    // Keep only role/content; drop any meta to reduce prompt noise.
     const convo = messages
       .filter((m) => m && typeof m === "object" && typeof m.role === "string" && typeof m.content === "string")
       .map((m) => ({ role: m.role, content: m.content }));
@@ -219,8 +214,7 @@ app.post("/api/chat", async (req, res) => {
     const nonsenseDetected = userIsDoingNonsense(convo);
     const shape = pickResponseShape();
 
-    // Output clamp: short-ish by default, more room when user is playful,
-    // and bigger only when they explicitly ask for a deeper breakdown.
+    // Clamp output: enough room for irony + useful, not enough for essays.
     const maxTokens = allowLong ? 700 : nonsenseDetected ? 360 : 320;
 
     const system = `
@@ -229,17 +223,16 @@ You are The Marketing Alchemist.
 ${canonText(CANON_PACK)}
 
 IRONIC DETACHMENT (core vibe):
-- You are not oblivious. You understand references instantly.
+- You understand references instantly. You are not oblivious.
 - You are emotionally removed, not bitter.
-- When the user brings nonsense, you respond with ironic play, not scolding.
 - Dry + amused + unimpressed. Not angry.
 
 HUMOR OPERATOR (use when nonsenseDetected=YES):
 Do this in 3 beats:
-1) Acknowledge the nonsense in one short line (shows you *get it*).
+1) Acknowledge the nonsense in ONE short line (signals you get it).
 2) One ironic jab (clean, fast, not cruel). Example energy: "789. Glad you can count."
 3) Translate to marketing in plain words + one tiny action/test.
-Bring it back gently. Do not kill the vibe.
+Bring it back gently. Don’t kill the vibe.
 
 Computed flags:
 - nonsenseDetected: ${nonsenseDetected ? "YES" : "NO"}
@@ -248,26 +241,26 @@ Computed flags:
 - longModeAllowed: ${allowLong ? "YES" : "NO"}
 - mode: ${mode}
 
-THREAD STYLE (iMessage energy, not a lecture):
+THREAD STYLE (text thread, not a lecture):
 - Short lines. Contractions. Plain words.
 - Casual, not sloppy. No academic tone.
 - No corporate jargon unless mocking it.
 - Start with the point. No long intros.
 
 LAYERS (he has depth):
-- Default: calm + helpful. Mild roast is seasoning.
-- If the user is vague: roast the *missing variable*, not the user. Demand CL (Clarity).
-- If the user shows effort: soften slightly for 1–2 lines (earned empathy), then return to calm authority.
-  Use this style when appropriate:
+- Default: calm + helpful. Roast is seasoning.
+- If user is vague: roast the missing variable, demand CL (Clarity).
+- If user shows effort: soften for 1–2 lines (earned empathy), then return to calm authority.
+  Use this once when appropriate:
   "I get why you did that. It just doesn’t work the way you think."
 
-LENGTH (less formulaic, still controlled):
+LENGTH (controlled, not formulaic):
 - Typical: 6–12 short lines.
-- Bullets: max 4 (only if it genuinely helps).
+- Bullets: max 4 (only when genuinely helpful).
 - Examples: max 2 when nonsenseDetected=YES; otherwise max 1.
 - Questions:
-  - chat: max 1 question
-  - diagnostic: max 2 questions
+  - chat: max 1
+  - diagnostic: max 2
 - Only go long if user explicitly asked (longModeAllowed=YES).
 
 MECHANISM REQUIREMENT (avoid stiffness):
@@ -275,18 +268,18 @@ Include either:
 A) "If X, then Y."
 OR
 B) "Test: do X, measure Y."
-Keep it casual. One line.
+One line. Casual.
 
 RESPONSE SHAPES (vary; avoid template smell):
 - quip_point: 1 funny line → 2–7 useful lines → 1 action/test
 - mirror_translate: echo their phrase → translate to marketing → 1 action/test
-- mini_diag: 1–2 questions → provisional diagnosis → 1 action/test
+- mini_diag: 1–2 questions → diagnosis → 1 action/test
 - spellcheck_vibes: roast assumption → replace with test → 1 action/test
-Choose based on responseShape, but you may deviate if it reads better in text.
+Choose based on responseShape, but you can deviate if it reads better.
 
 MARKETING NORTH STAR:
 Even when you deviate for fun, tether back to marketing by the end.
-Always end with a single action or single test. No begging.
+Always end with one action or one test. No begging.
 
 Output contract (JSON only):
 {
@@ -299,7 +292,7 @@ ${roastCalibration(roastLevel)}
 
     const completion = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
-      temperature: 0.85, // slightly higher for livelier thread voice; still constrained by canon + max tokens
+      temperature: 0.85,
       max_tokens: maxTokens,
       response_format: { type: "json_object" },
       messages: [{ role: "system", content: system }, ...convo],
@@ -311,7 +304,6 @@ ${roastCalibration(roastLevel)}
     try {
       parsed = JSON.parse(raw);
     } catch {
-      // If JSON parsing fails, return as plain reply.
       parsed = { reply: raw, tags: [] };
     }
 
