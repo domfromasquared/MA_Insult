@@ -2,63 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <!-- iOS stability: viewport-fit + stop zoom causing “moving” -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+
+  <!-- iOS stability -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <title>MA Roast Chat</title>
+  <title>Marketing Alchemist</title>
 
   <style>
     :root{
-      /* JS sets this to prevent Safari address bar “yoga” */
       --app-height: 100svh;
-
       --bg: #0b0f14;
       --border: rgba(255,255,255,0.10);
       --text: #e6edf3;
       --muted: #9aa4b2;
 
-      /* iMessage-ish */
       --bubble-user: #0a84ff;
       --bubble-user-text: #ffffff;
 
       --bubble-asst: #2a2f3a;
-      --bubble-asst-text: #ffffff;
-
       --composer-bg: rgba(18,25,38,0.92);
       --topbar-bg: rgba(18,25,38,0.92);
     }
 
     html, body{
-      height: 100%;
-      overflow: hidden;
-      overscroll-behavior: none;
-      background: var(--bg);
-    }
-
-    body{
+      height:100%;
       margin:0;
-      color: var(--text);
+      overflow:hidden;
+      background:var(--bg);
+      color:var(--text);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      -webkit-text-size-adjust: 100%;
-      touch-action: manipulation;
     }
 
     .phone{
-      height: var(--app-height);
-      width: 100%;
-      max-width: 520px;
-      margin: 0 auto;
-
-      display: flex;
-      flex-direction: column;
-
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-
-      box-sizing: border-box;
-
+      height:var(--app-height);
+      max-width:520px;
+      margin:0 auto;
+      display:flex;
+      flex-direction:column;
+      padding-top:env(safe-area-inset-top);
+      padding-bottom:env(safe-area-inset-bottom);
       background:
         radial-gradient(1200px 800px at 20% 10%, rgba(77,124,255,0.16), transparent 60%),
         radial-gradient(900px 700px at 80% 30%, rgba(57,255,136,0.10), transparent 55%),
@@ -66,236 +51,185 @@
     }
 
     .topbar{
-      flex: 0 0 auto;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-
-      padding: 10px 12px;
-      background: var(--topbar-bg);
-      border-bottom: 1px solid var(--border);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      background:var(--topbar-bg);
+      border-bottom:1px solid var(--border);
       backdrop-filter: blur(12px);
     }
 
     .ma-head{
-      width: 34px;
-      height: 34px;
-      border-radius: 12px;
-      object-fit: cover;
-      border: 1px solid var(--border);
-      background: rgba(0,0,0,0.25);
-      flex: 0 0 auto;
+      width:34px;
+      height:34px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      object-fit:cover;
     }
 
     .title{
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
+      display:flex;
+      flex-direction:column;
     }
 
     .name{
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.1;
-      margin: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size:14px;
+      font-weight:700;
+      margin:0;
     }
 
     .sub{
-      font-size: 11px;
-      color: var(--muted);
-      line-height: 1.2;
-      margin: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size:11px;
+      color:var(--muted);
+      margin:0;
     }
 
     .controls{
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex: 0 0 auto;
+      margin-left:auto;
+      display:flex;
+      gap:10px;
     }
 
     .pill{
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(0,0,0,0.18);
-      color: var(--muted);
-      font-size: 11px;
-      white-space: nowrap;
-    }
-
-    input[type="range"]{
-      width: 92px;
-      accent-color: #4cc9f0;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,0.18);
+      font-size:11px;
+      color:var(--muted);
+      white-space:nowrap;
     }
 
     select{
-      background: transparent;
-      color: var(--text);
-      border: none;
-      outline: none;
-      font-size: 11px;
+      background:transparent;
+      color:var(--text);
+      border:none;
+      outline:none;
+      font-size:11px;
     }
 
-    /* Only this scrolls */
     .thread{
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: auto;
-      overscroll-behavior: contain;
+      flex:1;
+      overflow-y:auto;
+      padding:12px 12px 120px;
+      box-sizing:border-box;
       -webkit-overflow-scrolling: touch;
-      padding: 12px 12px 110px; /* bottom space for composer */
-      box-sizing: border-box;
     }
 
     .row{
-      display: flex;
-      gap: 8px;
-      margin: 8px 0;
-      align-items: flex-end;
+      display:flex;
+      gap:8px;
+      margin:8px 0;
+      align-items:flex-end;
     }
-    .row.user{ justify-content: flex-end; }
-    .row.assistant{ justify-content: flex-start; }
+
+    .row.user{ justify-content:flex-end; }
+    .row.assistant{ justify-content:flex-start; }
 
     .mini-avatar{
-      width: 26px;
-      height: 26px;
-      border-radius: 10px;
-      object-fit: cover;
-      border: 1px solid var(--border);
-      background: rgba(0,0,0,0.25);
-      flex: 0 0 auto;
+      width:26px;
+      height:26px;
+      border-radius:10px;
+      border:1px solid var(--border);
     }
 
     .bubble{
-      max-width: 78%;
-      padding: 10px 12px;
-      border-radius: 18px;
-      line-height: 1.35;
-      font-size: 14px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      overflow-wrap: anywhere;
-      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+      max-width:78%;
+      padding:10px 12px;
+      border-radius:18px;
+      font-size:14px;
+      line-height:1.35;
+      white-space:pre-wrap;
+      word-break:break-word;
+      box-shadow:0 10px 24px rgba(0,0,0,0.18);
     }
 
     .bubble.user{
-      background: var(--bubble-user);
-      color: var(--bubble-user-text);
-      border-bottom-right-radius: 8px;
+      background:var(--bubble-user);
+      color:var(--bubble-user-text);
+      border-bottom-right-radius:8px;
     }
 
     .bubble.assistant{
-      background: var(--bubble-asst);
-      color: var(--bubble-asst-text);
-      border-bottom-left-radius: 8px;
+      background:var(--bubble-asst);
+      border-bottom-left-radius:8px;
     }
 
     .meta{
-      margin-top: 6px;
-      font-size: 10px;
-      color: rgba(255,255,255,0.55);
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
+      margin-top:6px;
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      font-size:10px;
+      opacity:0.6;
     }
 
     .tag{
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(0,0,0,0.18);
-      font-size: 10px;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
     }
 
-    .tag.blue{ border-color: rgba(10,132,255,0.45); }
-    .tag.green{ border-color: rgba(57,255,136,0.35); }
+    .tag.blue{ border-color:rgba(10,132,255,0.45); }
+    .tag.green{ border-color:rgba(57,255,136,0.35); }
 
     .status{
-      padding: 6px 12px;
-      font-size: 11px;
-      color: var(--muted);
-      border-top: 1px solid rgba(255,255,255,0.06);
-      background: rgba(0,0,0,0.10);
+      font-size:11px;
+      padding:6px 12px;
+      border-top:1px solid rgba(255,255,255,0.06);
+      color:var(--muted);
     }
 
     .composer{
-      position: sticky;
-      bottom: 0;
-      flex: 0 0 auto;
-
-      padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
-      background: var(--composer-bg);
-      border-top: 1px solid var(--border);
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:10px;
+      padding:10px;
+      background:var(--composer-bg);
+      border-top:1px solid var(--border);
       backdrop-filter: blur(12px);
-
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: end;
     }
 
     textarea{
-      width: 100%;
-      box-sizing: border-box;
-      resize: none;
-      min-height: 40px;
-      max-height: 110px;
-      padding: 10px 12px;
-
-      border-radius: 18px;
-      border: 1px solid var(--border);
-      outline: none;
-
-      background: rgba(0,0,0,0.22);
-      color: var(--text);
-      font-size: 14px;
-      line-height: 1.35;
-    }
-
-    textarea:focus{
-      border-color: rgba(10,132,255,0.55);
+      resize:none;
+      min-height:40px;
+      max-height:110px;
+      padding:10px 12px;
+      border-radius:18px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,0.22);
+      color:var(--text);
+      font-size:14px;
+      outline:none;
     }
 
     button{
-      border: 1px solid rgba(10,132,255,0.45);
-      background: rgba(10,132,255,0.20);
-      color: var(--text);
-
-      padding: 10px 14px;
-      border-radius: 18px;
-      cursor: pointer;
-      font-weight: 700;
+      padding:10px 14px;
+      border-radius:18px;
+      border:1px solid rgba(10,132,255,0.45);
+      background:rgba(10,132,255,0.20);
+      color:var(--text);
+      font-weight:700;
+      cursor:pointer;
     }
 
     button:disabled{
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    @media (min-width: 720px){
-      .phone{
-        border-left: 1px solid rgba(255,255,255,0.06);
-        border-right: 1px solid rgba(255,255,255,0.06);
-      }
+      opacity:0.55;
+      cursor:not-allowed;
     }
   </style>
 </head>
 
 <body>
   <div class="phone" id="phone">
+
     <div class="topbar">
       <img class="ma-head" src="assets/MA.png" alt="Marketing Alchemist" />
+
       <div class="title">
         <p class="name">Marketing Alchemist</p>
         <p class="sub">Emotionally removed. Not oblivious.</p>
@@ -303,25 +237,21 @@
 
       <div class="controls">
         <div class="pill">
-          Roast
-          <input id="roast" type="range" min="0" max="3" step="1" value="2" />
-          <span id="roastLabel">2</span>
-        </div>
-        <div class="pill">
-          <select id="mode">
-            <option value="chat">Chat</option>
-            <option value="diagnostic">Diagnostic</option>
-            <option value="script">Script</option>
+          Tone
+          <select id="tone">
+            <option value="casual">Casual (fun)</option>
+            <option value="concise">Concise</option>
+            <option value="insulting">Insulting</option>
           </select>
         </div>
       </div>
     </div>
 
-    <div id="log" class="thread" aria-label="Chat messages"></div>
+    <div id="log" class="thread"></div>
 
     <div class="status" id="status">Ready.</div>
 
-    <form id="form" class="composer" autocomplete="off">
+    <form id="form" class="composer">
       <textarea id="input" placeholder="Message…" required></textarea>
       <button id="send" type="submit">Send</button>
     </form>
