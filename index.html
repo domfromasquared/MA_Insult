@@ -4,125 +4,214 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Marketing Alchemist — Roast Chat</title>
+
   <style>
-    :root {
-      --bg: #0b0f14;
-      --panel: #121926;
-      --text: #e6edf3;
-      --muted: #9aa4b2;
-      --accent: #4cc9f0;
-      --green: #39ff88;
-      --blue: #4d7cff;
-      --border: rgba(255,255,255,0.08);
+    :root{
+      --bg:#0b0f14;
+      --panel:#121926;
+      --text:#e6edf3;
+      --muted:#9aa4b2;
+      --accent:#4cc9f0;
+      --green:#39ff88;
+      --blue:#4d7cff;
+      --border:rgba(255,255,255,0.08);
     }
-    body {
-      margin: 0;
-      background: radial-gradient(1200px 800px at 20% 10%, rgba(77,124,255,0.15), transparent 60%),
-                  radial-gradient(900px 700px at 80% 30%, rgba(57,255,136,0.10), transparent 55%),
-                  var(--bg);
-      color: var(--text);
+
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(77,124,255,0.15), transparent 60%),
+        radial-gradient(900px 700px at 80% 30%, rgba(57,255,136,0.10), transparent 55%),
+        var(--bg);
+      color:var(--text);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     }
-    .wrap { max-width: 920px; margin: 0 auto; padding: 18px; }
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; padding: 14px 16px; border: 1px solid var(--border);
-      border-radius: 16px; background: rgba(18,25,38,0.85); backdrop-filter: blur(10px);
+
+    .wrap{ max-width:920px; margin:0 auto; padding:18px; }
+
+    header{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; padding:14px 16px;
+      border:1px solid var(--border);
+      border-radius:16px;
+      background: rgba(18,25,38,0.85);
+      backdrop-filter: blur(10px);
     }
-    header .title { display: flex; flex-direction: column; gap: 4px; }
-    header h1 { font-size: 16px; margin: 0; letter-spacing: 0.2px; }
-    header p { margin: 0; font-size: 12px; color: var(--muted); }
-    .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
-    .pill {
-      border: 1px solid var(--border); border-radius: 999px; padding: 8px 10px;
+
+    header .title{ display:flex; flex-direction:column; gap:4px; }
+    header h1{ font-size:16px; margin:0; letter-spacing:0.2px; }
+    header p{ margin:0; font-size:12px; color:var(--muted); }
+
+    .controls{
+      display:flex; align-items:center; gap:12px;
+      flex-wrap:wrap; justify-content:flex-end;
+    }
+
+    .pill{
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:8px 10px;
       background: rgba(0,0,0,0.18);
-      font-size: 12px; color: var(--muted);
-      display: inline-flex; align-items: center; gap: 8px;
+      font-size:12px;
+      color:var(--muted);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
     }
-    input[type="range"] { width: 160px; accent-color: var(--accent); }
-    main {
-      margin-top: 14px;
-      border: 1px solid var(--border);
-      border-radius: 16px;
+
+    input[type="range"]{ width:160px; accent-color: var(--accent); }
+
+    select{
+      background: transparent;
+      color: var(--text);
+      border: none;
+      outline: none;
+      font-size: 12px;
+    }
+
+    main{
+      margin-top:14px;
+      border:1px solid var(--border);
+      border-radius:16px;
       background: rgba(18,25,38,0.75);
       backdrop-filter: blur(10px);
-      overflow: hidden;
+      overflow:hidden;
     }
-    .log {
-      height: min(68vh, 620px);
-      overflow: auto;
-      padding: 14px;
+
+    .log{
+      height:min(68vh, 620px);
+      overflow:auto;
+      padding:14px;
     }
-    .msg {
-      display: grid; grid-template-columns: 44px 1fr;
-      gap: 10px;
-      padding: 10px;
-      border-radius: 14px;
-      border: 1px solid transparent;
-      margin-bottom: 10px;
+
+    .msg{
+      display:grid;
+      grid-template-columns: 44px 1fr;
+      gap:10px;
+      padding:10px;
+      border-radius:14px;
+      border:1px solid transparent;
+      margin-bottom:10px;
     }
-    .msg:hover { border-color: var(--border); background: rgba(0,0,0,0.10); }
-    .avatar {
-      width: 40px; height: 40px; border-radius: 12px;
-      display: grid; place-items: center;
-      font-weight: 700; font-size: 12px;
-      border: 1px solid var(--border);
+
+    .msg:hover{
+      border-color: var(--border);
+      background: rgba(0,0,0,0.10);
+    }
+
+    /* User avatar block remains text-based */
+    .avatar{
+      width:40px; height:40px;
+      border-radius:12px;
+      display:grid; place-items:center;
+      font-weight:700; font-size:12px;
+      border:1px solid var(--border);
       background: rgba(0,0,0,0.20);
-      user-select: none;
+      user-select:none;
+      color: var(--accent);
     }
-    .avatar.user { color: var(--accent); }
-    .avatar.alch { color: var(--green); }
-    .bubble { display: flex; flex-direction: column; gap: 6px; }
-    .meta { font-size: 11px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
-    .text { white-space: pre-wrap; line-height: 1.4; font-size: 14px; }
-    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .tag {
-      font-size: 11px; padding: 4px 8px; border-radius: 999px;
-      border: 1px solid var(--border);
+
+    /* Assistant avatar becomes image-based */
+    .avatar-img{
+      width:40px;
+      height:40px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,0.20);
+      object-fit: cover;
+      display:block;
+    }
+
+    .bubble{ display:flex; flex-direction:column; gap:6px; }
+
+    .meta{
+      font-size:11px;
+      color:var(--muted);
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    .text{
+      white-space:pre-wrap;
+      line-height:1.4;
+      font-size:14px;
+    }
+
+    .tags{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+
+    .tag{
+      font-size:11px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid var(--border);
       background: rgba(0,0,0,0.18);
       color: var(--muted);
     }
-    .tag.green { color: var(--green); border-color: rgba(57,255,136,0.35); }
-    .tag.blue { color: var(--blue); border-color: rgba(77,124,255,0.35); }
 
-    form {
-      display: grid; grid-template-columns: 1fr auto;
-      gap: 10px;
-      padding: 12px;
-      border-top: 1px solid var(--border);
+    .tag.green{ color:var(--green); border-color: rgba(57,255,136,0.35); }
+    .tag.blue{ color:var(--blue); border-color: rgba(77,124,255,0.35); }
+
+    .status{
+      font-size:12px;
+      color:var(--muted);
+      padding:10px 14px;
+    }
+
+    code.inline{
+      background: rgba(0,0,0,0.22);
+      padding:2px 6px;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+
+    form{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:10px;
+      padding:12px;
+      border-top:1px solid var(--border);
       background: rgba(0,0,0,0.12);
     }
-    textarea {
-      resize: none;
-      min-height: 44px; max-height: 140px;
-      padding: 12px 12px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
+
+    textarea{
+      resize:none;
+      min-height:44px;
+      max-height:140px;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid var(--border);
       background: rgba(0,0,0,0.22);
-      color: var(--text);
-      outline: none;
-      font-size: 14px;
-      line-height: 1.35;
+      color:var(--text);
+      outline:none;
+      font-size:14px;
+      line-height:1.35;
     }
-    textarea:focus { border-color: rgba(76,201,240,0.5); }
-    button {
-      border: 1px solid rgba(76,201,240,0.35);
+
+    textarea:focus{ border-color: rgba(76,201,240,0.5); }
+
+    button{
+      border:1px solid rgba(76,201,240,0.35);
       background: rgba(76,201,240,0.14);
       color: var(--text);
-      padding: 12px 14px;
-      border-radius: 14px;
-      cursor: pointer;
-      font-weight: 650;
-      letter-spacing: 0.2px;
+      padding:12px 14px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:650;
+      letter-spacing:0.2px;
     }
-    button:hover { background: rgba(76,201,240,0.20); }
-    button:disabled { opacity: 0.55; cursor: not-allowed; }
 
-    .status { font-size: 12px; color: var(--muted); padding: 10px 14px; }
-    .hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
-    code.inline { background: rgba(0,0,0,0.22); padding: 2px 6px; border-radius: 8px; border: 1px solid var(--border); }
+    button:hover{ background: rgba(76,201,240,0.20); }
+    button:disabled{ opacity:0.55; cursor:not-allowed; }
+
+    .hint{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:10px;
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <header>
@@ -137,9 +226,10 @@
           <input id="roast" type="range" min="0" max="3" step="1" value="2" />
           <span id="roastLabel">2</span>
         </div>
+
         <div class="pill">
           Mode:
-          <select id="mode" style="background: transparent; color: var(--text); border: none; outline: none;">
+          <select id="mode">
             <option value="chat">Chat</option>
             <option value="diagnostic">Diagnostic</option>
             <option value="script">Script help</option>
@@ -150,7 +240,9 @@
 
     <main>
       <div id="log" class="log"></div>
-      <div id="status" class="status">Connected to server endpoint <code class="inline">/api/chat</code>.</div>
+      <div id="status" class="status">
+        Connected. Endpoint set in <code class="inline">app.js</code>.
+      </div>
 
       <form id="form">
         <textarea id="input" placeholder="Say something… (The lab will judge the mechanism.)" required></textarea>
@@ -159,132 +251,10 @@
     </main>
 
     <div class="hint">
-      Tip: Ask for “element callouts” if you want CL/ME/CT tags, or ask “what’s the false assumption?” and “what’s the one action today?”
+      Tip: Ask “what’s the false assumption?” and “what’s the one action today?”
     </div>
   </div>
 
-  <script>
-    const logEl = document.getElementById("log");
-    const form = document.getElementById("form");
-    const input = document.getElementById("input");
-    const sendBtn = document.getElementById("send");
-    const statusEl = document.getElementById("status");
-    const roastEl = document.getElementById("roast");
-    const roastLabel = document.getElementById("roastLabel");
-    const modeEl = document.getElementById("mode");
-
-    roastEl.addEventListener("input", () => roastLabel.textContent = roastEl.value);
-
-    // Simple in-memory conversation
-    const messages = [];
-
-    function addMessage(role, text, meta = {}) {
-      messages.push({ role, content: text, meta });
-
-      const row = document.createElement("div");
-      row.className = "msg";
-
-      const avatar = document.createElement("div");
-      avatar.className = "avatar " + (role === "user" ? "user" : "alch");
-      avatar.textContent = role === "user" ? "YOU" : "ALCH";
-
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-
-      const metaEl = document.createElement("div");
-      metaEl.className = "meta";
-      const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      metaEl.textContent = role === "user" ? `You • ${time}` : `Marketing Alchemist • ${time}`;
-
-      const textEl = document.createElement("div");
-      textEl.className = "text";
-      textEl.textContent = text;
-
-      bubble.appendChild(metaEl);
-      bubble.appendChild(textEl);
-
-      if (meta.tags && Array.isArray(meta.tags) && meta.tags.length) {
-        const tagsEl = document.createElement("div");
-        tagsEl.className = "tags";
-        meta.tags.forEach(t => {
-          const tag = document.createElement("span");
-          tag.className = "tag " + (t.color || "");
-          tag.textContent = t.label;
-          tagsEl.appendChild(tag);
-        });
-        bubble.appendChild(tagsEl);
-      }
-
-      row.appendChild(avatar);
-      row.appendChild(bubble);
-      logEl.appendChild(row);
-      logEl.scrollTop = logEl.scrollHeight;
-    }
-
-    addMessage("assistant",
-      "State your goal, your audience, and what you already tried.\nIf you give me vibes, I will return them… charred.",
-      { tags: [{ label: "CL: ask for clarity", color: "blue" }, { label: "ME: mechanism > magic", color: "green" }] }
-    );
-
-    async function sendMessage(userText) {
-      const payload = {
-        messages,
-        roastLevel: Number(roastEl.value),
-        mode: modeEl.value
-      };
-
-      statusEl.textContent = "Distilling… (No rituals. Just causality.)";
-      sendBtn.disabled = true;
-
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(`Server error ${res.status}: ${errText}`);
-        }
-
-        const data = await res.json();
-
-        // Expect { reply: string, tags?: [{label,color}] }
-        addMessage("assistant", data.reply || "(no reply)", { tags: data.tags || [] });
-        statusEl.textContent = "Ready.";
-      } catch (e) {
-        console.error(e);
-        statusEl.textContent = "Error. Check server logs and the /api/chat route.";
-        addMessage("assistant",
-          "Your server failed the experiment.\nThat’s not a tragedy. It’s data.\nFix the route and try again.",
-          { tags: [{ label: "TR: truth hurts", color: "green" }] }
-        );
-      } finally {
-        sendBtn.disabled = false;
-      }
-    }
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
-
-      addMessage("user", text);
-      input.value = "";
-
-      await sendMessage(text);
-    });
-
-    // Enter to send, Shift+Enter for newline
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        form.requestSubmit();
-      }
-    });
-  </script>
   <script src="./app.js"></script>
-
 </body>
 </html>
