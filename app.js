@@ -92,11 +92,11 @@
   });
 
   addBubble(
-    "assistant",
-    ""Alright. What are we trying to make happen?\n" +
-"Who’s it for?\n" +
-"And what have you tried so far?\n\n" +
-"If you give me vibes, I’ll translate them into something measurable."",
-    { tags: [{ label: "CL", color: "blue" }, { label: "ME", color: "green" }] }
-  );
+  "assistant",
+  "Alright. What are we trying to make happen?\n" +
+    "Who’s it for?\n" +
+    "And what have you tried so far?\n\n" +
+    "If you give me vibes, I’ll translate them into something measurable.",
+  { tags: [{ label: "CL", color: "blue" }, { label: "ME", color: "green" }] }
+);
 })();
