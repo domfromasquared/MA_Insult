@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Marketing Alchemist — Roast Chat</title>
 
   <style>
@@ -17,6 +17,12 @@
       --border:rgba(255,255,255,0.08);
     }
 
+    /* ✅ No page scroll. The chat log will scroll internally. */
+    html, body{
+      height: 100%;
+      overflow: hidden;
+    }
+
     body{
       margin:0;
       background:
@@ -27,39 +33,63 @@
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     }
 
-    .wrap{ max-width:920px; margin:0 auto; padding:18px; }
+    /* ✅ Full-height layout, portrait friendly */
+    .wrap{
+      height: 100dvh; /* modern mobile viewport */
+      max-width: 920px;
+      margin: 0 auto;
+
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+
+      padding:
+        12px
+        max(12px, env(safe-area-inset-right))
+        max(12px, env(safe-area-inset-bottom))
+        max(12px, env(safe-area-inset-left));
+      box-sizing: border-box;
+    }
 
     header{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px; padding:14px 16px;
+      flex: 0 0 auto;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 12px;
       border:1px solid var(--border);
       border-radius:16px;
       background: rgba(18,25,38,0.85);
       backdrop-filter: blur(10px);
     }
 
-    header .title{ display:flex; flex-direction:column; gap:4px; }
-    header h1{ font-size:16px; margin:0; letter-spacing:0.2px; }
+    header .title{ display:flex; flex-direction:column; gap:4px; min-width: 0; }
+    header h1{ font-size:15px; margin:0; letter-spacing:0.2px; }
     header p{ margin:0; font-size:12px; color:var(--muted); }
 
     .controls{
-      display:flex; align-items:center; gap:12px;
-      flex-wrap:wrap; justify-content:flex-end;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
     }
 
     .pill{
       border:1px solid var(--border);
       border-radius:999px;
-      padding:8px 10px;
+      padding:7px 10px;
       background: rgba(0,0,0,0.18);
       font-size:12px;
       color:var(--muted);
       display:inline-flex;
       align-items:center;
       gap:8px;
+      white-space: nowrap;
     }
 
-    input[type="range"]{ width:160px; accent-color: var(--accent); }
+    input[type="range"]{ width:140px; accent-color: var(--accent); }
 
     select{
       background: transparent;
@@ -69,19 +99,27 @@
       font-size: 12px;
     }
 
+    /* ✅ main consumes remaining height; internal panels manage their own scrolling */
     main{
-      margin-top:14px;
+      flex: 1 1 auto;
+      min-height: 0; /* critical for flex children scrolling */
       border:1px solid var(--border);
       border-radius:16px;
       background: rgba(18,25,38,0.75);
       backdrop-filter: blur(10px);
       overflow:hidden;
+
+      display: flex;
+      flex-direction: column;
     }
 
+    /* ✅ ONLY this area scrolls */
     .log{
-      height:min(68vh, 620px);
+      flex: 1 1 auto;
+      min-height: 0;
       overflow:auto;
-      padding:14px;
+      padding:12px;
+      -webkit-overflow-scrolling: touch;
     }
 
     .msg{
@@ -99,7 +137,6 @@
       background: rgba(0,0,0,0.10);
     }
 
-    /* User avatar block remains text-based */
     .avatar{
       width:40px; height:40px;
       border-radius:12px;
@@ -111,7 +148,6 @@
       color: var(--accent);
     }
 
-    /* Assistant avatar becomes image-based */
     .avatar-img{
       width:40px;
       height:40px;
@@ -122,7 +158,7 @@
       display:block;
     }
 
-    .bubble{ display:flex; flex-direction:column; gap:6px; }
+    .bubble{ display:flex; flex-direction:column; gap:6px; min-width: 0; }
 
     .meta{
       font-size:11px;
@@ -130,12 +166,15 @@
       display:flex;
       gap:8px;
       align-items:center;
+      min-width: 0;
     }
 
     .text{
       white-space:pre-wrap;
       line-height:1.4;
       font-size:14px;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     .tags{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
@@ -153,9 +192,12 @@
     .tag.blue{ color:var(--blue); border-color: rgba(77,124,255,0.35); }
 
     .status{
+      flex: 0 0 auto;
       font-size:12px;
       color:var(--muted);
-      padding:10px 14px;
+      padding:8px 12px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.10);
     }
 
     code.inline{
@@ -166,10 +208,11 @@
     }
 
     form{
+      flex: 0 0 auto;
       display:grid;
       grid-template-columns: 1fr auto;
       gap:10px;
-      padding:12px;
+      padding:10px 12px;
       border-top:1px solid var(--border);
       background: rgba(0,0,0,0.12);
     }
@@ -177,8 +220,8 @@
     textarea{
       resize:none;
       min-height:44px;
-      max-height:140px;
-      padding:12px 12px;
+      max-height:110px;
+      padding:10px 12px;
       border-radius:14px;
       border:1px solid var(--border);
       background: rgba(0,0,0,0.22);
@@ -186,6 +229,8 @@
       outline:none;
       font-size:14px;
       line-height:1.35;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     textarea:focus{ border-color: rgba(76,201,240,0.5); }
@@ -205,9 +250,20 @@
     button:disabled{ opacity:0.55; cursor:not-allowed; }
 
     .hint{
+      flex: 0 0 auto;
       color:var(--muted);
       font-size:12px;
-      margin-top:10px;
+      margin: 0;
+      padding: 0 2px;
+    }
+
+    /* ✅ Mobile-specific tightening */
+    @media (max-width: 480px) {
+      header { padding: 10px 10px; }
+      input[type="range"]{ width:110px; }
+      .pill { padding: 6px 9px; }
+      .msg { padding: 9px; }
+      textarea { max-height: 96px; }
     }
   </style>
 </head>
@@ -222,7 +278,7 @@
 
       <div class="controls">
         <div class="pill">
-          Roast level
+          Roast
           <input id="roast" type="range" min="0" max="3" step="1" value="2" />
           <span id="roastLabel">2</span>
         </div>
@@ -250,9 +306,7 @@
       </form>
     </main>
 
-    <div class="hint">
-      Tip: Ask “what’s the false assumption?” and “what’s the one action today?”
-    </div>
+    <p class="hint">Tip: Ask “what’s the false assumption?” and “what’s the one action today?”</p>
   </div>
 
   <script src="./app.js"></script>
