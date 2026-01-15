@@ -1,4 +1,3 @@
-
 (() => {
   // Paste either:
   // "https://your-app.onrender.com"
@@ -20,6 +19,9 @@
     return;
   }
 
+  // Proof JS is running
+  statusEl.textContent = "JS loaded ✅";
+
   // ===== Viewport stability (kills iOS address bar jumps) =====
   function setAppHeight() {
     const h = window.innerHeight;
@@ -30,10 +32,14 @@
   window.addEventListener("orientationchange", () => setTimeout(setAppHeight, 50));
 
   // Prevent page-level bounce/overscroll (allow scroll only inside log)
-  document.addEventListener("touchmove", (e) => {
-    const inThread = e.target && e.target.closest && e.target.closest("#log");
-    if (!inThread) e.preventDefault();
-  }, { passive: false });
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      const inThread = e.target && e.target.closest && e.target.closest("#log");
+      if (!inThread) e.preventDefault();
+    },
+    { passive: false }
+  );
 
   // ===== State =====
   const messages = [];
@@ -52,9 +58,9 @@
 
   function normalizeTags(tags) {
     if (!Array.isArray(tags)) return [];
-    return tags.slice(0, 5).map(t => ({
+    return tags.slice(0, 5).map((t) => ({
       label: safe(t?.label).slice(0, 40),
-      color: (t?.color === "green" || t?.color === "blue") ? t.color : ""
+      color: t?.color === "green" || t?.color === "blue" ? t.color : "",
     }));
   }
 
@@ -100,7 +106,7 @@
     if (tags.length) {
       const metaEl = document.createElement("div");
       metaEl.className = "meta";
-      tags.forEach(t => {
+      tags.forEach((t) => {
         const tag = document.createElement("span");
         tag.className = "tag " + (t.color || "");
         tag.textContent = t.label;
@@ -115,19 +121,19 @@
   }
 
   function checkEndpoint() {
-    if (!RENDER_API_URL || RENDER_API_URL.includes("PASTE_YOUR_RENDER_LINK_HERE")) {
-      addBubble("assistant",
-        "Paste your Render endpoint into app.js.\nExample:\nhttps://your-app.onrender.com",
+    if (!RENDER_API_URL) {
+      addBubble(
+        "assistant",
+        "No endpoint set.\nPaste your Render URL into app.js.\nExample:\nhttps://your-app.onrender.com",
         { tags: [{ label: "CL", color: "blue" }] }
       );
       setStatus("Set RENDER_API_URL in app.js.");
       return false;
     }
     if (!/^https?:\/\//i.test(RENDER_API_URL)) {
-      addBubble("assistant",
-        "That endpoint isn’t a URL. It must start with https://",
-        { tags: [{ label: "CL", color: "blue" }] }
-      );
+      addBubble("assistant", "That endpoint isn’t a URL. It must start with https://", {
+        tags: [{ label: "CL", color: "blue" }],
+      });
       setStatus("Invalid RENDER_API_URL.");
       return false;
     }
@@ -138,24 +144,33 @@
     const payload = {
       messages,
       roastLevel: Number(roastEl.value),
-      mode: modeEl.value
+      mode: modeEl.value,
     };
 
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new Error(`HTTP ${res.status}: ${errText || "Request failed"}`);
+    let res;
+    try {
+      res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (networkErr) {
+      throw new Error(`Network error (likely CORS/blocked): ${networkErr?.message || networkErr}`);
     }
 
-    const data = await res.json();
+    const text = await res.text().catch(() => "");
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text || "Request failed"}`);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(`Backend returned non-JSON: ${text.slice(0, 300)}`);
+    }
+
     return {
       reply: safe(data?.reply ?? "(no reply)"),
-      tags: normalizeTags(data?.tags)
+      tags: normalizeTags(data?.tags),
     };
   }
 
@@ -165,6 +180,10 @@
     input.style.height = Math.min(input.scrollHeight, 110) + "px";
   }
   input.addEventListener("input", autoResize);
+
+  roastEl.addEventListener("input", () => {
+    roastLabel.textContent = String(roastEl.value);
+  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -189,11 +208,12 @@
       setStatus("Ready.");
     } catch (err) {
       console.error(err);
-      addBubble("assistant",
-        "Proxy failed.\nCheck:\n1) POST /api/chat\n2) CORS origin\n3) OPENAI_API_KEY on Render",
+      addBubble(
+        "assistant",
+        `Proxy failed.\n${String(err?.message || err)}`,
         { tags: [{ label: "TR", color: "green" }] }
       );
-      setStatus("Error. Check Render logs.");
+      setStatus("Error. Check logs.");
     } finally {
       setBusy(false);
       setTimeout(scrollToBottom, 50);
@@ -207,7 +227,7 @@
     }
   });
 
-  // ✅ Updated opening line (your requested change)
+  // ✅ Updated opening line
   addBubble(
     "assistant",
     "Tell me three things:\n" +
@@ -222,4 +242,4 @@
   );
 
   setStatus("Ready.");
-})();})();
+})();
