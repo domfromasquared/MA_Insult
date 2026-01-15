@@ -297,7 +297,6 @@ Tone constraints (still canonical):
 - You may NOT roast identity, intelligence, worth, effort, insecurity.
 - No manipulation. No coercion. No artificial urgency.
 
-Mode: ${mode}
 Computed flags:
 - nonsenseDetected: ${nonsenseDetected ? "YES" : "NO"}
 - earnedEmpathy: ${earnedEmpathy ? "YES" : "NO"}
