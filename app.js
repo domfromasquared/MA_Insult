@@ -12,7 +12,7 @@
   const statusEl = document.getElementById("status");
   const roastEl = document.getElementById("roast");
   const roastLabel = document.getElementById("roastLabel");
-  const modeEl = document.getElementById("mode");
+  const modeEl = document.getElementById("mode"); // chat / diagnostic / script
 
   if (!phoneEl || !logEl || !form || !input || !sendBtn || !statusEl || !roastEl || !roastLabel || !modeEl) {
     console.error("Missing DOM nodes. Check IDs in index.html.");
@@ -21,6 +21,8 @@
 
   // Proof JS is running
   statusEl.textContent = "JS loaded ✅";
+
+  const safe = (s) => String(s ?? "");
 
   // ===== Viewport stability (kills iOS address bar jumps) =====
   function setAppHeight() {
@@ -41,11 +43,40 @@
     { passive: false }
   );
 
+  // ===== Inject Tone selector into topbar if missing =====
+  // Expected HTML:
+  // <select id="tone"><option value="casual">Casual (fun)</option> ...</select>
+  function ensureToneSelector() {
+    let toneEl = document.getElementById("tone");
+    if (toneEl) return toneEl;
+
+    const topbar = document.querySelector(".topbar .controls");
+    if (!topbar) {
+      console.warn("No .topbar .controls found; tone selector not injected.");
+      return null;
+    }
+
+    const pill = document.createElement("div");
+    pill.className = "pill";
+    pill.style.gap = "6px";
+    pill.innerHTML = `
+      Tone
+      <select id="tone" aria-label="Tone mode">
+        <option value="casual">Casual (fun)</option>
+        <option value="concise">Concise</option>
+        <option value="insulting">Insulting</option>
+      </select>
+    `;
+
+    topbar.appendChild(pill);
+    toneEl = pill.querySelector("#tone");
+    return toneEl;
+  }
+
+  const toneEl = ensureToneSelector();
+
   // ===== State =====
   const messages = [];
-  let inFlight = false;
-
-  const safe = (s) => String(s ?? "");
 
   function normalizeEndpoint(raw) {
     let url = safe(raw).trim();
@@ -65,11 +96,11 @@
   }
 
   function setBusy(b) {
-    inFlight = b;
     sendBtn.disabled = b;
     input.disabled = b;
     roastEl.disabled = b;
     modeEl.disabled = b;
+    if (toneEl) toneEl.disabled = b;
   }
 
   function setStatus(s) {
@@ -140,11 +171,18 @@
     return true;
   }
 
+  function toneLabel(v) {
+    if (v === "concise") return "Concise";
+    if (v === "insulting") return "Insulting";
+    return "Casual (fun)";
+  }
+
   async function callBackend() {
     const payload = {
       messages,
       roastLevel: Number(roastEl.value),
       mode: modeEl.value,
+      toneMode: toneEl ? toneEl.value : "casual",
     };
 
     let res;
@@ -185,6 +223,12 @@
     roastLabel.textContent = String(roastEl.value);
   });
 
+  if (toneEl) {
+    toneEl.addEventListener("change", () => {
+      setStatus(`Tone: ${toneLabel(toneEl.value)}.`);
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = input.value.trim();
@@ -205,14 +249,12 @@
       const { reply, tags } = await callBackend();
       pushMessage("assistant", reply);
       addBubble("assistant", reply, { tags });
-      setStatus("Ready.");
+      setStatus(`Ready. Tone: ${toneEl ? toneLabel(toneEl.value) : "Casual (fun)"}.`);
     } catch (err) {
       console.error(err);
-      addBubble(
-        "assistant",
-        `Proxy failed.\n${String(err?.message || err)}`,
-        { tags: [{ label: "TR", color: "green" }] }
-      );
+      addBubble("assistant", `Proxy failed.\n${String(err?.message || err)}`, {
+        tags: [{ label: "TR", color: "green" }],
+      });
       setStatus("Error. Check logs.");
     } finally {
       setBusy(false);
@@ -227,19 +269,19 @@
     }
   });
 
-  // ✅ Updated opening line
+  // Opening line (neutral; user controls tone from selector)
   addBubble(
     "assistant",
     "Tell me three things:\n" +
       "your goal,\n" +
       "your audience,\n" +
       "and what you already tried.\n\n" +
-      "You can bring vibes.\n" +
-      "I’ll translate them into marketing.\n\n" +
+      "Pick a tone if you want.\n" +
+      "I’ll still drag you back to marketing.\n\n" +
       "CL.\n" +
       "Then ME.",
     { tags: [{ label: "CL", color: "blue" }, { label: "ME", color: "green" }] }
   );
 
-  setStatus("Ready.");
+  setStatus(`Ready. Tone: ${toneEl ? toneLabel(toneEl.value) : "Casual (fun)"}.`);
 })();
