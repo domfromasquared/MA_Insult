@@ -2,278 +2,314 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Marketing Alchemist — Roast Chat</title>
+  <!-- iOS stability: viewport-fit + stop zooming that causes "moving" -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <title>MA Roast Chat</title>
 
   <style>
     :root{
-      --bg:#0b0f14;
-      --panel:#121926;
-      --text:#e6edf3;
-      --muted:#9aa4b2;
-      --accent:#4cc9f0;
-      --green:#39ff88;
-      --blue:#4d7cff;
-      --border:rgba(255,255,255,0.08);
+      /* iOS-safe viewport unit: JS sets --app-height */
+      --app-height: 100svh;
+
+      --bg: #0b0f14;
+      --panel: rgba(18,25,38,0.85);
+      --border: rgba(255,255,255,0.10);
+      --text: #e6edf3;
+      --muted: #9aa4b2;
+
+      /* iMessage-ish */
+      --bubble-user: #0a84ff;
+      --bubble-user-text: #ffffff;
+
+      --bubble-asst: #2a2f3a;
+      --bubble-asst-text: #ffffff;
+
+      --composer-bg: rgba(18,25,38,0.92);
+      --topbar-bg: rgba(18,25,38,0.92);
     }
 
-    /* ✅ No page scroll. The chat log will scroll internally. */
+    /* Kill page scroll + bounce */
     html, body{
       height: 100%;
       overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--bg);
     }
 
     body{
       margin:0;
-      background:
-        radial-gradient(1200px 800px at 20% 10%, rgba(77,124,255,0.15), transparent 60%),
-        radial-gradient(900px 700px at 80% 30%, rgba(57,255,136,0.10), transparent 55%),
-        var(--bg);
-      color:var(--text);
+      color: var(--text);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
     }
 
-    /* ✅ Full-height layout, portrait friendly */
-    .wrap{
-      height: 100dvh; /* modern mobile viewport */
-      max-width: 920px;
+    /* Phone frame centered on desktop, full screen on mobile */
+    .phone {
+      height: var(--app-height);
+      width: 100%;
+      max-width: 520px;
       margin: 0 auto;
 
       display: flex;
       flex-direction: column;
-      gap: 12px;
 
-      padding:
-        12px
-        max(12px, env(safe-area-inset-right))
-        max(12px, env(safe-area-inset-bottom))
-        max(12px, env(safe-area-inset-left));
+      /* Safe areas */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+
       box-sizing: border-box;
+
+      background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(77,124,255,0.16), transparent 60%),
+        radial-gradient(900px 700px at 80% 30%, rgba(57,255,136,0.10), transparent 55%),
+        var(--bg);
     }
 
-    header{
+    /* iMessage-like top bar */
+    .topbar {
       flex: 0 0 auto;
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      padding:12px 12px;
-      border:1px solid var(--border);
-      border-radius:16px;
-      background: rgba(18,25,38,0.85);
-      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      padding: 10px 12px;
+      background: var(--topbar-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
     }
 
-    header .title{ display:flex; flex-direction:column; gap:4px; min-width: 0; }
-    header h1{ font-size:15px; margin:0; letter-spacing:0.2px; }
-    header p{ margin:0; font-size:12px; color:var(--muted); }
-
-    .controls{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
+    .ma-head {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      flex: 0 0 auto;
     }
 
-    .pill{
-      border:1px solid var(--border);
-      border-radius:999px;
-      padding:7px 10px;
+    .topbar .title {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .topbar .name {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.1;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar .sub {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.2;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Optional controls row (compact) */
+    .controls {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
       background: rgba(0,0,0,0.18);
-      font-size:12px;
-      color:var(--muted);
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
+      color: var(--muted);
+      font-size: 11px;
       white-space: nowrap;
     }
 
-    input[type="range"]{ width:140px; accent-color: var(--accent); }
+    input[type="range"]{
+      width: 92px;
+      accent-color: #4cc9f0;
+    }
 
     select{
       background: transparent;
       color: var(--text);
       border: none;
       outline: none;
-      font-size: 12px;
+      font-size: 11px;
     }
 
-    /* ✅ main consumes remaining height; internal panels manage their own scrolling */
-    main{
-      flex: 1 1 auto;
-      min-height: 0; /* critical for flex children scrolling */
-      border:1px solid var(--border);
-      border-radius:16px;
-      background: rgba(18,25,38,0.75);
-      backdrop-filter: blur(10px);
-      overflow:hidden;
-
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ✅ ONLY this area scrolls */
-    .log{
+    /* Chat area: only this scrolls */
+    .thread {
       flex: 1 1 auto;
       min-height: 0;
-      overflow:auto;
-      padding:12px;
+      overflow: auto;
+      overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
-    }
 
-    .msg{
-      display:grid;
-      grid-template-columns: 44px 1fr;
-      gap:10px;
-      padding:10px;
-      border-radius:14px;
-      border:1px solid transparent;
-      margin-bottom:10px;
-    }
-
-    .msg:hover{
-      border-color: var(--border);
-      background: rgba(0,0,0,0.10);
-    }
-
-    .avatar{
-      width:40px; height:40px;
-      border-radius:12px;
-      display:grid; place-items:center;
-      font-weight:700; font-size:12px;
-      border:1px solid var(--border);
-      background: rgba(0,0,0,0.20);
-      user-select:none;
-      color: var(--accent);
-    }
-
-    .avatar-img{
-      width:40px;
-      height:40px;
-      border-radius:12px;
-      border:1px solid var(--border);
-      background: rgba(0,0,0,0.20);
-      object-fit: cover;
-      display:block;
-    }
-
-    .bubble{ display:flex; flex-direction:column; gap:6px; min-width: 0; }
-
-    .meta{
-      font-size:11px;
-      color:var(--muted);
-      display:flex;
-      gap:8px;
-      align-items:center;
-      min-width: 0;
-    }
-
-    .text{
-      white-space:pre-wrap;
-      line-height:1.4;
-      font-size:14px;
-      word-break: break-word;
-      overflow-wrap: anywhere;
-    }
-
-    .tags{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-
-    .tag{
-      font-size:11px;
-      padding:4px 8px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background: rgba(0,0,0,0.18);
-      color: var(--muted);
-    }
-
-    .tag.green{ color:var(--green); border-color: rgba(57,255,136,0.35); }
-    .tag.blue{ color:var(--blue); border-color: rgba(77,124,255,0.35); }
-
-    .status{
-      flex: 0 0 auto;
-      font-size:12px;
-      color:var(--muted);
-      padding:8px 12px;
-      border-top: 1px solid var(--border);
-      background: rgba(0,0,0,0.10);
-    }
-
-    code.inline{
-      background: rgba(0,0,0,0.22);
-      padding:2px 6px;
-      border-radius:8px;
-      border:1px solid var(--border);
-    }
-
-    form{
-      flex: 0 0 auto;
-      display:grid;
-      grid-template-columns: 1fr auto;
-      gap:10px;
-      padding:10px 12px;
-      border-top:1px solid var(--border);
-      background: rgba(0,0,0,0.12);
-    }
-
-    textarea{
-      resize:none;
-      min-height:44px;
-      max-height:110px;
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid var(--border);
-      background: rgba(0,0,0,0.22);
-      color:var(--text);
-      outline:none;
-      font-size:14px;
-      line-height:1.35;
-      width: 100%;
+      padding: 12px 12px 110px; /* bottom padding for composer */
       box-sizing: border-box;
     }
 
-    textarea:focus{ border-color: rgba(76,201,240,0.5); }
-
-    button{
-      border:1px solid rgba(76,201,240,0.35);
-      background: rgba(76,201,240,0.14);
-      color: var(--text);
-      padding:12px 14px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:650;
-      letter-spacing:0.2px;
+    /* Message rows */
+    .row {
+      display: flex;
+      gap: 8px;
+      margin: 8px 0;
+      align-items: flex-end;
     }
+    .row.user { justify-content: flex-end; }
+    .row.assistant { justify-content: flex-start; }
 
-    button:hover{ background: rgba(76,201,240,0.20); }
-    button:disabled{ opacity:0.55; cursor:not-allowed; }
-
-    .hint{
+    .mini-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
       flex: 0 0 auto;
-      color:var(--muted);
-      font-size:12px;
-      margin: 0;
-      padding: 0 2px;
     }
 
-    /* ✅ Mobile-specific tightening */
-    @media (max-width: 480px) {
-      header { padding: 10px 10px; }
-      input[type="range"]{ width:110px; }
-      .pill { padding: 6px 9px; }
-      .msg { padding: 9px; }
-      textarea { max-height: 96px; }
+    .bubble {
+      max-width: 78%;
+      padding: 10px 12px;
+      border-radius: 18px;
+      line-height: 1.35;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+    }
+
+    .bubble.user {
+      background: var(--bubble-user);
+      color: var(--bubble-user-text);
+      border-bottom-right-radius: 8px;
+    }
+
+    .bubble.assistant {
+      background: var(--bubble-asst);
+      color: var(--bubble-asst-text);
+      border-bottom-left-radius: 8px;
+    }
+
+    .meta {
+      margin-top: 6px;
+      font-size: 10px;
+      color: rgba(255,255,255,0.55);
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18);
+      font-size: 10px;
+    }
+
+    .tag.blue { border-color: rgba(10,132,255,0.45); }
+    .tag.green { border-color: rgba(57,255,136,0.35); }
+
+    /* Fixed composer like iMessage */
+    .composer {
+      position: sticky;
+      bottom: 0;
+      flex: 0 0 auto;
+
+      padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+      background: var(--composer-bg);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      resize: none;
+      min-height: 40px;
+      max-height: 110px;
+
+      padding: 10px 12px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      outline: none;
+
+      background: rgba(0,0,0,0.22);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    textarea:focus {
+      border-color: rgba(10,132,255,0.55);
+    }
+
+    button {
+      border: 1px solid rgba(10,132,255,0.45);
+      background: rgba(10,132,255,0.20);
+      color: var(--text);
+
+      padding: 10px 14px;
+      border-radius: 18px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    /* Subtle status line (optional) */
+    .status {
+      padding: 6px 12px;
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      background: rgba(0,0,0,0.10);
+    }
+
+    /* Desktop nicety: "phone bezel" feel */
+    @media (min-width: 720px){
+      .phone{
+        border-left: 1px solid rgba(255,255,255,0.06);
+        border-right: 1px solid rgba(255,255,255,0.06);
+      }
     }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
-    <header>
+  <div class="phone" id="phone">
+    <div class="topbar">
+      <img class="ma-head" src="assets/MA.png" alt="Marketing Alchemist" />
       <div class="title">
-        <h1>Marketing Alchemist — Roast Chat</h1>
-        <p>Mechanisms over vibes. Roast targets patterns, not people.</p>
+        <p class="name">Marketing Alchemist</p>
+        <p class="sub">Roasts patterns. Not people.</p>
       </div>
 
       <div class="controls">
@@ -282,31 +318,24 @@
           <input id="roast" type="range" min="0" max="3" step="1" value="2" />
           <span id="roastLabel">2</span>
         </div>
-
         <div class="pill">
-          Mode:
           <select id="mode">
             <option value="chat">Chat</option>
             <option value="diagnostic">Diagnostic</option>
-            <option value="script">Script help</option>
+            <option value="script">Script</option>
           </select>
         </div>
       </div>
-    </header>
+    </div>
 
-    <main>
-      <div id="log" class="log"></div>
-      <div id="status" class="status">
-        Connected. Endpoint set in <code class="inline">app.js</code>.
-      </div>
+    <div id="log" class="thread" aria-label="Chat messages"></div>
 
-      <form id="form">
-        <textarea id="input" placeholder="Say something… (The lab will judge the mechanism.)" required></textarea>
-        <button id="send" type="submit">Send</button>
-      </form>
-    </main>
+    <div class="status" id="status">Ready.</div>
 
-    <p class="hint">Tip: Ask “what’s the false assumption?” and “what’s the one action today?”</p>
+    <form id="form" class="composer" autocomplete="off">
+      <textarea id="input" placeholder="Message…" required></textarea>
+      <button id="send" type="submit">Send</button>
+    </form>
   </div>
 
   <script src="./app.js"></script>
