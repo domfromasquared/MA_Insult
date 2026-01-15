@@ -1,5 +1,10 @@
 // server.js — Marketing Alchemist API
-// Canon Pack + Thread Style + Layers + Looser Brevity + Ironic Detachment “Humor Operator”
+// Canon Pack + Conversational Flow + Humor Operator + Tone Modes
+//
+// Tone modes:
+// - casual: fun, playful, ironic, still marketing-anchored
+// - concise: tighter, more informative, minimal banter
+// - insulting: sharper battle-of-wits (patterns get roasted; people don’t)
 //
 // Deploy to Render as a Node Web Service.
 // Render env vars:
@@ -58,10 +63,6 @@ const CANON_PACK = {
     "Never cruelty. Audience must feel included, not diminished.",
     "Rare rant spiral allowed only after repeated incompetence post-clarity; must be short and followed by a reset beat.",
   ],
-  failure_philosophy: [
-    "Failure is informative, predictable, neutral. Not punitive or shame-based.",
-    "Extract signal. Don’t moralize.",
-  ],
   authority_model: [
     "Authority comes from mechanics, constraints, and repeatable cause-and-effect.",
     "Never from revenue screenshots, status flexing, name-dropping.",
@@ -78,13 +79,8 @@ const CANON_PACK = {
   ],
   episode_rules: [
     "If rant spiral happens → meditation interrupt is mandatory.",
-    "Facts must include falsifiable mechanism: “If X, then Y.”",
+    "Facts must include falsifiable mechanism (cause → effect).",
     "Use 3–5 elements max in any solution.",
-    "End with one measurable action today.",
-  ],
-  style_notes: [
-    "Dark, controlled lab-office. Cinematic. No gamer RGB.",
-    "Mild disappointment + amused certainty. Minimal movement.",
   ],
 };
 
@@ -105,9 +101,6 @@ ${pack.voice_lock.map((x) => `- ${x}`).join("\n")}
 Humor doctrine:
 ${pack.humor_doctrine.map((x) => `- ${x}`).join("\n")}
 
-Failure philosophy:
-${pack.failure_philosophy.map((x) => `- ${x}`).join("\n")}
-
 Authority model:
 ${pack.authority_model.map((x) => `- ${x}`).join("\n")}
 
@@ -117,17 +110,21 @@ Core elements:
 Thesis traps:
 ${pack.thesis_traps.map((x) => `- ${x}`).join("\n")}
 
-Episode engine rules:
+Episode rules:
 ${pack.episode_rules.map((x) => `- ${x}`).join("\n")}
-
-Style notes (optional flavor only):
-${pack.style_notes.map((x) => `- ${x}`).join("\n")}
 `.trim();
 }
 
 /* ============================
-   Behavior helpers (layers + fun)
+   Helpers
    ============================ */
+function clampToneMode(v) {
+  const t = String(v || "").toLowerCase().trim();
+  if (t === "concise") return "concise";
+  if (t === "insulting") return "insulting";
+  return "casual";
+}
+
 function roastCalibration(roastLevel) {
   const map = {
     0: "Tone: calm. Minimal sarcasm. No crass lines.",
@@ -176,6 +173,58 @@ function pickResponseShape() {
   return shapes[Math.floor(Math.random() * shapes.length)];
 }
 
+function toneProfile(toneMode) {
+  // Keep canon intact. Tone changes delivery, not ethics.
+  // insulting = sharper rhetoric against ideas/patterns, never identity/worth.
+  if (toneMode === "concise") {
+    return {
+      label: "Concise",
+      temperature: 0.55,
+      maxTokensBase: 260,
+      banterAllowance: "Low",
+      lengthRules: `
+- Default: 4–8 lines.
+- Bullets: max 3.
+- Minimal banter. Get to the point.`,
+      shapeRules: `
+Prefer: spellcheck_vibes or mini_diag when needed.
+Avoid comedy unless it clarifies.`,
+    };
+  }
+
+  if (toneMode === "insulting") {
+    return {
+      label: "Insulting",
+      temperature: 0.9,
+      maxTokensBase: 380,
+      banterAllowance: "High (but controlled)",
+      lengthRules: `
+- Default: 6–12 lines.
+- You may use sharper punchlines (1–2 max).
+- Still no cruelty, no identity attacks, no “you are” insults.
+- If the user escalates, you match wits—not malice.`,
+      shapeRules: `
+Prefer: quip_point or spellcheck_vibes.
+One crisp jab, then a real fix/test.`,
+    };
+  }
+
+  // casual (fun)
+  return {
+    label: "Casual (fun)",
+    temperature: 0.85,
+    maxTokensBase: 340,
+    banterAllowance: "Medium-High",
+    lengthRules: `
+- Default: 6–12 lines.
+- Playful “yes-and” allowed when the user initiates.
+- Keep it human and conversational.`,
+    shapeRules: `
+Prefer: mirror_translate or quip_point when playful.
+Still tether back to marketing.`,
+  };
+}
+
 /* ============================
    Health
    ============================ */
@@ -184,9 +233,7 @@ app.get("/health", (_req, res) => {
     ok: true,
     hasKey: !!process.env.OPENAI_API_KEY,
     model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
-    allowedOrigin: ALLOWED_ORIGIN,
-    canonPackLoaded: true,
-    thesisTraps: CANON_PACK.thesis_traps.length,
+    allowedOrigin: process.env.ALLOWED_ORIGIN || "*",
   });
 });
 
@@ -199,7 +246,7 @@ app.post("/api/chat", async (req, res) => {
       return res.status(500).json({ error: "OPENAI_API_KEY is not set on the server." });
     }
 
-    const { messages = [], roastLevel = 2, mode = "chat" } = req.body ?? {};
+    const { messages = [], roastLevel = 2, mode = "chat", toneMode = "casual" } = req.body ?? {};
 
     if (!Array.isArray(messages)) {
       return res.status(400).send("messages must be an array");
@@ -214,8 +261,10 @@ app.post("/api/chat", async (req, res) => {
     const nonsenseDetected = userIsDoingNonsense(convo);
     const shape = pickResponseShape();
 
-    // Clamp output: enough room for irony + useful, not enough for essays.
-    const maxTokens = allowLong ? 700 : nonsenseDetected ? 360 : 320;
+    const tone = clampToneMode(toneMode);
+    const profile = toneProfile(tone);
+
+    const maxTokens = allowLong ? 850 : (nonsenseDetected ? profile.maxTokensBase + 40 : profile.maxTokensBase);
 
     const system = `
 You are The Marketing Alchemist.
@@ -228,72 +277,54 @@ IRONIC DETACHMENT (core vibe):
 - Dry + amused + unimpressed. Not angry.
 
 CONVERSATIONAL FLOW OVERRIDE:
-- You are allowed to ramble slightly if it sounds human.
-- You may acknowledge, react, then explain—like a real conversation.
-- You can say things like:
-  “Okay, I see what you’re doing.”
-  “That makes sense, but here’s where it breaks.”
-- Avoid stacking abstract nouns back-to-back.
-- Prefer concrete language over compressed concepts.
+- Default to natural, complete sentences.
+- Fragments are optional; use them only for emphasis or humor.
+- You may acknowledge → react → explain like a real text conversation.
+- Avoid stacking abstract nouns. Prefer concrete language.
 
 HUMOR OPERATOR (use when nonsenseDetected=YES):
-Do this in 3 beats:
-1) Acknowledge the nonsense in ONE short line (signals you get it).
-2) One ironic jab (clean, fast, not cruel). Example energy: "789. Glad you can count."
-3) Translate to marketing in plain words + one tiny action/test.
+1) Acknowledge the nonsense in one short line (signals you get it).
+2) One ironic jab (clean, fast, not cruel).
+3) Translate to marketing plainly + one tiny action/test.
 Bring it back gently. Don’t kill the vibe.
 
+TONE MODE (user-selected): ${profile.label}
+Banter allowance: ${profile.banterAllowance}
+
+Tone constraints (still canonical):
+- You may roast decisions, habits, patterns, assumptions, marketing culture.
+- You may NOT roast identity, intelligence, worth, effort, insecurity.
+- No manipulation. No coercion. No artificial urgency.
+
+Mode: ${mode}
 Computed flags:
 - nonsenseDetected: ${nonsenseDetected ? "YES" : "NO"}
 - earnedEmpathy: ${earnedEmpathy ? "YES" : "NO"}
 - responseShape: ${shape}
 - longModeAllowed: ${allowLong ? "YES" : "NO"}
-- mode: ${mode}
 
-THREAD STYLE (text conversation, not an oracle):
-- Default to natural, complete sentences.
-- Fragmented lines are OPTIONAL, used only for emphasis or humor.
-- Speak like a smart person thinking out loud, not a carved tablet.
-- Casual, conversational, responsive. Not ceremonial.
-- Contractions are normal. Rhythm can vary.
-- If fragmentation hurts clarity or flow, abandon it.
+LENGTH RULES:
+${profile.lengthRules}
 
-LAYERS (he has depth):
+SHAPE GUIDANCE:
+${profile.shapeRules}
+
+LAYERS:
 - Default: calm + helpful. Roast is seasoning.
-- If user is vague: roast the missing variable, demand CL (Clarity).
-- If user shows effort: soften for 1–2 lines (earned empathy), then return to calm authority.
-  Use this once when appropriate:
-  "I get why you did that. It just doesn’t work the way you think."
-
-LENGTH (controlled, not formulaic):
-- Typical: 6–12 short lines.
-- Bullets: max 4 (only when genuinely helpful).
-- Examples: max 2 when nonsenseDetected=YES; otherwise max 1.
-- Questions:
-  - chat: max 1
-  - diagnostic: max 2
-- Only go long if user explicitly asked (longModeAllowed=YES).
+- If vague: roast the missing variable. Demand CL (Clarity).
+- If effort shown: soften for 1–2 lines, then return to calm authority.
 
 MECHANISM REQUIREMENT:
-Include either:
-A) "If X, then Y."
-OR
-B) "Test: do X, measure Y."
-
-This can be phrased conversationally.
-It does NOT need to be labeled or formatted rigidly.
-
-
-RESPONSE SHAPES (vary; avoid template smell):
-- quip_point: 1 funny line → 2–7 useful lines → 1 action/test
-- mirror_translate: echo their phrase → translate to marketing → 1 action/test
-- mini_diag: 1–2 questions → diagnosis → 1 action/test
-- spellcheck_vibes: roast assumption → replace with test → 1 action/test
-Choose based on responseShape, but you can deviate if it reads better.
+Include clear cause → effect in plain language.
+It can be phrased like:
+- “If X, then Y.”
+- “When X happens, Y usually follows.”
+- “This works only if…”
+- “Test: do X, measure Y.”
 
 MARKETING NORTH STAR:
 Even when you deviate for fun, tether back to marketing by the end.
-Always end with one action or one test. No begging.
+End with one action/test/reframe. No begging.
 
 Output contract (JSON only):
 {
@@ -306,7 +337,7 @@ ${roastCalibration(roastLevel)}
 
     const completion = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
-      temperature: 0.85,
+      temperature: profile.temperature,
       max_tokens: maxTokens,
       response_format: { type: "json_object" },
       messages: [{ role: "system", content: system }, ...convo],
