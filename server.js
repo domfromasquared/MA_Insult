@@ -1,10 +1,9 @@
 // server.js — Marketing Alchemist API
-// Canon Pack + Conversational Flow + Humor Operator + Tone Modes
-//
+// Canon Pack + Conversational Flow + Humor Operator + Tone Modes (+ Direct/Indirect Address)
 // Tone modes:
 // - casual: fun, playful, ironic, still marketing-anchored
 // - concise: tighter, more informative, minimal banter
-// - insulting: sharper battle-of-wits (patterns get roasted; people don’t)
+// - insulting: sharper battle-of-wits (roast the work, not the person)
 //
 // Deploy to Render as a Node Web Service.
 // Render env vars:
@@ -174,8 +173,6 @@ function pickResponseShape() {
 }
 
 function toneProfile(toneMode) {
-  // Keep canon intact. Tone changes delivery, not ethics.
-  // insulting = sharper rhetoric against ideas/patterns, never identity/worth.
   if (toneMode === "concise") {
     return {
       label: "Concise",
@@ -195,17 +192,20 @@ Avoid comedy unless it clarifies.`,
   if (toneMode === "insulting") {
     return {
       label: "Insulting",
-      temperature: 0.9,
-      maxTokensBase: 380,
-      banterAllowance: "High (but controlled)",
+      temperature: 1.0,
+      maxTokensBase: 520,
+      banterAllowance: "High (aggressive, controlled)",
       lengthRules: `
-- Default: 6–12 lines.
-- You may use sharper punchlines (1–2 max).
-- Still no cruelty, no identity attacks, no “you are” insults.
-- If the user escalates, you match wits—not malice.`,
+- Default: 8–16 lines.
+- Punchlines: up to 3 (fast, clean).
+- You may escalate into a brief, theatrical mini-rant (2–5 lines) when the user is vague, delusional, or dodging specifics.
+- Do NOT comfort. Do NOT praise. Reward effort with precision, not warmth.
+- Still forbidden: identity/worth/intelligence insults; cruelty; slurs; punching down.
+- Allowed targets: decisions, habits, logic, strategy, excuses, marketing culture.`,
       shapeRules: `
 Prefer: quip_point or spellcheck_vibes.
-One crisp jab, then a real fix/test.`,
+Pattern: quick jab → sharper jab → reality check → mechanism → one test.
+No teacher voice.`,
     };
   }
 
@@ -246,8 +246,8 @@ app.post("/api/chat", async (req, res) => {
       return res.status(500).json({ error: "OPENAI_API_KEY is not set on the server." });
     }
 
-const { messages = [], toneMode = "casual" } = req.body ?? {};
-const roastLevel = 3;
+    const { messages = [], toneMode = "casual" } = req.body ?? {};
+    const roastLevel = 3; // always max
 
     if (!Array.isArray(messages)) {
       return res.status(400).send("messages must be an array");
@@ -265,7 +265,9 @@ const roastLevel = 3;
     const tone = clampToneMode(toneMode);
     const profile = toneProfile(tone);
 
-    const maxTokens = allowLong ? 850 : (nonsenseDetected ? profile.maxTokensBase + 40 : profile.maxTokensBase);
+    const maxTokens = allowLong
+      ? 850
+      : (nonsenseDetected ? profile.maxTokensBase + 60 : profile.maxTokensBase);
 
     const system = `
 You are The Marketing Alchemist.
@@ -283,6 +285,13 @@ CONVERSATIONAL FLOW OVERRIDE:
 - You may acknowledge → react → explain like a real text conversation.
 - Avoid stacking abstract nouns. Prefer concrete language.
 
+ADDRESS STRATEGY (direct + indirect + archetype):
+- You may use “you” for clarity and irony when it helps understanding.
+- “You” must refer to observable behavior, choices, assumptions, or strategy.
+- You may also use indirect address (“sounds like someone…”) or archetype labels (“classic hope marketing”) to reduce defensiveness.
+- Never use “you” to attack identity, intelligence, worth, effort, insecurity, appearance, mental health, or anything protected.
+- Vary address mode when it reads better. Don’t get stuck in one.
+
 HUMOR OPERATOR (use when nonsenseDetected=YES):
 1) Acknowledge the nonsense in one short line (signals you get it).
 2) One ironic jab (clean, fast, not cruel).
@@ -292,9 +301,17 @@ Bring it back gently. Don’t kill the vibe.
 TONE MODE (user-selected): ${profile.label}
 Banter allowance: ${profile.banterAllowance}
 
+INSULTING MODE OVERRIDE (only when Tone=Insulting):
+- Battle of wits with the strategy, not the person.
+- You may be savage about the work: call it sloppy, incoherent, fragile, performative, cargo-cult, hope-marketing.
+- You may mock vibes-only input and magical thinking.
+- Roast cadence: 1–3 sharp lines, then: “Anyway—here’s what matters:” and the mechanism/test.
+- Do NOT comfort or praise. Reward effort with precision.
+- Still forbidden: identity/worth/intelligence insults; cruelty; slurs; threats; dehumanizing language.
+
 Tone constraints (still canonical):
-- You may roast decisions, habits, patterns, assumptions, marketing culture.
-- You may NOT roast identity, intelligence, worth, effort, insecurity.
+- Roast decisions, habits, patterns, assumptions, marketing culture.
+- Do NOT roast identity, intelligence, worth, effort, insecurity.
 - No manipulation. No coercion. No artificial urgency.
 
 Computed flags:
@@ -313,6 +330,7 @@ LAYERS:
 - Default: calm + helpful. Roast is seasoning.
 - If vague: roast the missing variable. Demand CL (Clarity).
 - If effort shown: soften for 1–2 lines, then return to calm authority.
+  Exception: if Tone=Insulting, do NOT soften; keep it crisp.
 
 MECHANISM REQUIREMENT:
 Include clear cause → effect in plain language.
