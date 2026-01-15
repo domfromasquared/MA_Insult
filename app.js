@@ -1,13 +1,14 @@
 /* app.js — Marketing Alchemist Roast Chat (GitHub Pages)
    - Static frontend (GitHub Pages)
    - Calls your Render proxy (API key stays server-side)
-   - ONLY EDIT: RENDER_API_URL
+   - ONLY EDIT: RENDER_API_URL (base or full /api/chat)
 */
 
 (() => {
-  // ✅ ONLY THING YOU EDIT:
-  // Example: "https://my-alchemist-proxy.onrender.com/api/chat"
-  const RENDER_API_URL = "https://ma-insult.onrender.com";
+  // ✅ Paste either:
+  // - "https://your-app.onrender.com"
+  // - "https://your-app.onrender.com/api/chat"
+  const RENDER_API_URL = "https://ma-insult.onrender.com"; // <-- your current value
 
   // ---- DOM ----
   const logEl = document.getElementById("log");
@@ -25,7 +26,7 @@
   }
 
   // ---- State ----
-  const messages = []; // [{role, content}]
+  const messages = [];
   let inFlight = false;
 
   // ---- Helpers ----
@@ -59,11 +60,30 @@
     messages.push({ role, content: safe(content) });
   }
 
+  function scrollLogToBottom() {
+    // rAF ensures DOM has painted before scrolling
+    requestAnimationFrame(() => {
+      logEl.scrollTop = logEl.scrollHeight;
+    });
+  }
+
+  function normalizeEndpoint(raw) {
+    let url = safe(raw).trim();
+    if (!url) return "";
+    // remove trailing slash
+    url = url.replace(/\/+$/, "");
+    // If they pasted base domain, append /api/chat
+    if (!/\/api\/chat$/i.test(url)) url += "/api/chat";
+    return url;
+  }
+
+  const ENDPOINT = normalizeEndpoint(RENDER_API_URL);
+
   function checkRenderUrl() {
     if (!RENDER_API_URL || RENDER_API_URL.includes("PASTE_YOUR_RENDER_LINK_HERE")) {
       addMessageToLog(
         "assistant",
-        "Your experiment is missing a reagent.\n\nPaste your Render endpoint into RENDER_API_URL in app.js.\nExample:\nhttps://your-app.onrender.com/api/chat",
+        "Your experiment is missing a reagent.\n\nPaste your Render endpoint into RENDER_API_URL in app.js.\nExample:\nhttps://your-app.onrender.com (or /api/chat)",
         { tags: [{ label: "CL: missing endpoint", color: "blue" }] }
       );
       setStatus("Set your Render endpoint in app.js (RENDER_API_URL).");
@@ -86,7 +106,6 @@
     const row = document.createElement("div");
     row.className = "msg";
 
-    // Avatar: user = text block, assistant = image
     let avatar;
     if (role === "assistant") {
       avatar = document.createElement("img");
@@ -132,7 +151,7 @@
     row.appendChild(avatar);
     row.appendChild(bubble);
     logEl.appendChild(row);
-    logEl.scrollTop = logEl.scrollHeight;
+    scrollLogToBottom();
   }
 
   // ---- Network ----
@@ -143,7 +162,7 @@
       mode: modeEl.value
     };
 
-    const res = await fetch(RENDER_API_URL, {
+    const res = await fetch(ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -161,11 +180,17 @@
     };
   }
 
+  // ---- Mobile UX: auto-resize textarea (keeps it from hijacking the screen) ----
+  function autoResizeTextarea() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 110) + "px";
+  }
+  input.addEventListener("input", autoResizeTextarea);
+
   async function handleSend(userText) {
     if (inFlight) return;
     if (!checkRenderUrl()) return;
 
-    // Store + render user message
     pushMessage("user", userText);
     addMessageToLog("user", userText);
 
@@ -206,6 +231,7 @@
     const text = input.value.trim();
     if (!text) return;
     input.value = "";
+    autoResizeTextarea();
     handleSend(text);
   });
 
@@ -223,5 +249,5 @@
     { tags: [{ label: "CL: define the goal", color: "blue" }, { label: "ME: mechanism > magic", color: "green" }] }
   );
 
-  setStatus("Paste your Render endpoint into RENDER_API_URL in app.js.");
+  setStatus("Ready. (Mobile: no page scroll. Only the log scrolls.)");
 })();
