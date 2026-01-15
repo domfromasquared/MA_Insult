@@ -7,7 +7,7 @@
 (() => {
   // ✅ ONLY THING YOU EDIT:
   // Example: "https://my-alchemist-proxy.onrender.com/api/chat"
-  const RENDER_API_URL = "https://ma-bottle-fill-api.onrender.com";
+  const RENDER_API_URL = "https://ma-insult.onrender.com";
 
   // ---- DOM ----
   const logEl = document.getElementById("log");
