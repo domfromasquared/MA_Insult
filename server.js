@@ -246,7 +246,7 @@ app.post("/api/chat", async (req, res) => {
       return res.status(500).json({ error: "OPENAI_API_KEY is not set on the server." });
     }
 
-    const { messages = [], roastLevel = 2, mode = "chat", toneMode = "casual" } = req.body ?? {};
+    const { messages = [], roastLevel = 3, mode = "chat", toneMode = "casual" } = req.body ?? {};
 
     if (!Array.isArray(messages)) {
       return res.status(400).send("messages must be an array");
